@@ -42,6 +42,7 @@ def calculate_basic_metrics(graph: nx.DiGraph):
     print("Global clustering coefficient:", global_clustering_coefficient)
     print("Average local clustering coefficient:", average_local_clustering_coefficient)
 
+# Compute the triangles 
 def compute_support(graph: nx.DiGraph):
     support = {edge: 0 for edge in graph.edges()}
     for node in graph.nodes():
@@ -53,6 +54,7 @@ def compute_support(graph: nx.DiGraph):
                     support[(node, neighbors[j])] += 1
                     support[(neighbors[i], neighbors[j])] += 1
     return support
+
 
 def decomposition(graph: nx.DiGraph, k: int):
     support = compute_support(graph)
@@ -88,10 +90,33 @@ def k_trusses(graph: nx.DiGraph, k_list: list):
     for k in k_list:
         truss = nx.k_truss(graph, k)
         average_degree = sum(dict(truss.degree()).values()) / truss.number_of_nodes()
-        print(f"{k}-truss: {truss.number_of_nodes()} nodes; {truss.number_of_edges()} edges; density = {nx.density(truss)}; avg degree = {average_degree};")
+        periphereal_comunications = analyze_periphereal_comunication(graph, k, truss)
+        print(f"{k}-truss: {truss.number_of_nodes()} nodes; {truss.number_of_edges()} edges; density = {nx.density(truss)}; avg degree = {average_degree}; number of periphereal comunications = {periphereal_comunications};")
         trusses.append(truss)
     
     return trusses
+    
+''' 
+    function to compute the periphereal comunications, given by all the edges, 
+    that have one node in the periphereal nodes set and the other in the central nodes set or viceversa
+
+    input:
+        graph: the graph
+        k: k parameter
+        truss: the k-truss
+'''
+def analyze_periphereal_comunication(graph, k, truss):
+    k_minus_1_truss = nx.k_truss(graph, k-1)
+    peripherial = set(k_minus_1_truss.nodes()) - set(truss.nodes()) 
+    peripherial_edges = []
+    for edge in graph.edges():
+        u,v = edge
+        if (u in truss.nodes() and v in peripherial) or (v in truss.nodes() and u in peripherial):
+            peripherial_edges.append(edge)
+
+    return len(peripherial_edges)
+    
+
 
 G = create_graph(PATH, COL)
 truss_decomposition(G.copy())
