@@ -3,75 +3,96 @@ import networkx as nx
 import matplotlib.pyplot as plt
 from collections import Counter
 
-# Read the file into a DataFrame
-file_path = "ProcessedData.txt"
-columns = ["source", "target", "timeStamp"]
-df = pd.read_csv(file_path, sep=" ", header=None, names=columns)
-print(df)
+PATH = "ProcessedData.txt"
+COL = ["source", "target", "timeStamp"]
+K = [3, 4, 5]
 
-# Construct the directed graph
-G = nx.DiGraph()
-edges = list(zip(df["source"], df["target"], df["timeStamp"]))
-G.add_weighted_edges_from(edges)
+def create_graph(file_path: str, columns: list):
+    # Read the file into a DataFrame
+    df = pd.read_csv(file_path, sep=" ", header=None, names=columns)
+    print(df)
 
-#Basic Metrics
-num_nodes = G.number_of_nodes()
-num_edges = G.number_of_edges()
-average_degree = sum(dict(G.degree()).values()) / num_nodes
-degree_distribution = [d for n, d in G.degree()]
-print("Number of nodes:", num_nodes)
-print("Number of edges:", num_edges)
-print("Graph density:", nx.density(G))
-print("Average degree:", average_degree)
-print("Degree distribution:", degree_distribution)
+    # Construct the directed graph
+    graph = nx.DiGraph()
+    edges = list(zip(df["source"], df["target"], df["timeStamp"]))
+    graph.add_weighted_edges_from(edges)
+    
+    # Print metrics
+    calculate_basic_metrics(graph)
+    
+    return graph
 
-# Clustering Coefficient
-global_clustering_coefficient = nx.transitivity(G)
-local_clustering_coefficients = nx.clustering(G)
-average_local_clustering_coefficient = sum(local_clustering_coefficients.values()) / num_nodes
-print("Global clustering coefficient:", global_clustering_coefficient)
-print("Average local clustering coefficient:", average_local_clustering_coefficient)
+def calculate_basic_metrics(graph: nx.DiGraph):
+    #Basic Metrics
+    num_nodes = graph.number_of_nodes()
+    num_edges = graph.number_of_edges()
+    average_degree = sum(dict(graph.degree()).values()) / num_nodes
+    degree_distribution = [d for n, d in graph.degree()]
+    print('\n---------------------- BASIC METRICS ----------------------')
+    print("Number of nodes:", num_nodes)
+    print("Number of edges:", num_edges)
+    print("Graph density:", nx.density(graph))
+    print("Average degree:", average_degree)
+    print("Degree distribution:", degree_distribution)
 
-# Compute k-truss
-def directed_k_truss(G, k):
-    H = G.copy()
-    while True:
-        to_remove = []
-        for u, v in H.edges():
-            # Count the number of triangles each edge is part of
-            count = 0
-            for w in set(H.predecessors(u)).intersection(H.successors(v)):
-                if H.has_edge(v, w):
-                    count += 1
-            if count < k - 2:
-                to_remove.append((u, v))
-        if not to_remove:
-            break
-        H.remove_edges_from(to_remove)
-    return H
+    # Clustering Coefficient
+    global_clustering_coefficient = nx.transitivity(graph)
+    local_clustering_coefficients = nx.clustering(graph)
+    average_local_clustering_coefficient = sum(local_clustering_coefficients.values()) / num_nodes
+    print("Global clustering coefficient:", global_clustering_coefficient)
+    print("Average local clustering coefficient:", average_local_clustering_coefficient)
 
-k_values = [3, 4, 5]
-k_trusses = {k: directed_k_truss(G, k) for k in k_values}
+def compute_support(graph: nx.DiGraph):
+    support = {edge: 0 for edge in graph.edges()}
+    for node in graph.nodes():
+        neighbors = list(graph.neighbors(node))
+        for i in range(len(neighbors)):
+            for j in range(i+1, len(neighbors)):
+                if graph.has_edge(neighbors[i], neighbors[j]):
+                    support[(node, neighbors[i])] += 1
+                    support[(node, neighbors[j])] += 1
+                    support[(neighbors[i], neighbors[j])] += 1
+    return support
 
-def analyze_k_truss(k_truss_subgraph):
-    # Compute density
-    density = nx.density(k_truss_subgraph)
-    print("Density of k-truss:", density)
+def decomposition(graph: nx.DiGraph, k: int):
+    support = compute_support(graph)
+    
+    edges_to_remove = [edge for edge, sup in support.items() if sup < (k-2)]
+    if not edges_to_remove:
+        return graph
+    graph.remove_edges_from(edges_to_remove)
+    
+    nodes_to_remove = [node for node in list(graph.nodes) if graph.degree(node) == 0]
+    graph.remove_nodes_from(nodes_to_remove)
+    return graph
 
-    # Degree distribution
-    degrees = [d for n, d in k_truss_subgraph.degree()]
-    print("Degree distribution:", degrees)
+def truss_decomposition(graph: nx.DiGraph):
+    k=3
+    k_class = []
+    while graph.number_of_edges() > 0:
+        k_truss = decomposition(graph.copy(), k)
+        if k_truss.number_of_edges() > 0:
+            k_class.append(k_truss)
+        k += 1
+        graph = k_truss
 
-for k in k_values:
-    analyze_k_truss(k_trusses[k])
+    print('\n---------------------- TRUSS DECOMPOSITION ----------------------')
+    for i in range(len(k_class)):
+        print(f"{i+1}-class: {k_class[i].number_of_nodes()} nodes; {k_class[i].number_of_edges()} edges;")
 
-# Visualize the k-trusses
-# pos = nx.spring_layout(G)
-# plt.figure(figsize=(30, 10))
+def k_trusses(graph: nx.DiGraph, k_list: list):
+    graph = graph.to_undirected()
+    trusses = []
+    
+    print('\n---------------------- K-TRUSSES ----------------------')
+    for k in k_list:
+        truss = nx.k_truss(graph, k)
+        average_degree = sum(dict(truss.degree()).values()) / truss.number_of_nodes()
+        print(f"{k}-truss: {truss.number_of_nodes()} nodes; {truss.number_of_edges()} edges; density = {nx.density(truss)}; avg degree = {average_degree};")
+        trusses.append(truss)
+    
+    return trusses
 
-# for i, k in enumerate(k_values, 1):
-#     plt.subplot(1, len(k_values), i)
-#     nx.draw_networkx(G, pos, node_color='lightgray', with_labels=True, edge_color='gray')
-#     nx.draw_networkx_edges(k_trusses[k], pos, edge_color='blue', width=2)
-#     plt.title(f"k-Truss (k={k})")
-# plt.show()
+G = create_graph(PATH, COL)
+truss_decomposition(G.copy())
+trusses = k_trusses(G.copy(), K)
