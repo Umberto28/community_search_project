@@ -1,9 +1,9 @@
 from datetime import datetime
 
-# Function to convert Unix timestamp to desired date and time format
+# Function to convert Unix timestamp to conventional date and time format
 def convert_unix_to_date_time(unix_timestamp):
     date_time = datetime.utcfromtimestamp(unix_timestamp)
-    return date_time.strftime('%d/%m/%Y %H:%M:%S')
+    return date_time.strftime('%d/%m/%Y,%H:%M:%S')
 
 # Read the input file
 input_file_path = 'CollegeMsg.txt'

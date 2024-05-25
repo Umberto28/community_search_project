@@ -5,13 +5,14 @@ from collections import Counter
 
 # Read the file into a DataFrame
 file_path = "ProcessedData.txt"
-columns = ["Nodo_source", "Nodo_target", "Converted_TimeStamp"]
+columns = ["source", "target", "timeStamp"]
 df = pd.read_csv(file_path, sep=" ", header=None, names=columns)
+print(df)
 
 # Construct the directed graph
 G = nx.DiGraph()
-edges = list(zip(df["Nodo_source"], df["Nodo_target"]))
-G.add_edges_from(edges)
+edges = list(zip(df["source"], df["target"], df["timeStamp"]))
+G.add_weighted_edges_from(edges)
 
 #Basic Metrics
 num_nodes = G.number_of_nodes()
@@ -24,7 +25,14 @@ print("Graph density:", nx.density(G))
 print("Average degree:", average_degree)
 print("Degree distribution:", degree_distribution)
 
-# Compute k-trusses for k=3, 4, 5
+# Clustering Coefficient
+global_clustering_coefficient = nx.transitivity(G)
+local_clustering_coefficients = nx.clustering(G)
+average_local_clustering_coefficient = sum(local_clustering_coefficients.values()) / num_nodes
+print("Global clustering coefficient:", global_clustering_coefficient)
+print("Average local clustering coefficient:", average_local_clustering_coefficient)
+
+# Compute k-truss
 def directed_k_truss(G, k):
     H = G.copy()
     while True:
@@ -58,8 +66,8 @@ for k in k_values:
     analyze_k_truss(k_trusses[k])
 
 # Visualize the k-trusses
-pos = nx.spring_layout(G)
-plt.figure(figsize=(30, 10))
+# pos = nx.spring_layout(G)
+# plt.figure(figsize=(30, 10))
 
 # for i, k in enumerate(k_values, 1):
 #     plt.subplot(1, len(k_values), i)
