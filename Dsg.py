@@ -95,8 +95,26 @@ def isStable(G, alpha, beta,r):
     edges=[G.edge()]
     return (r[-1]>r[0] and (alpha.at[e]==0 or beta.at[e]==0 for e in edges))
 
-def isCDDS(G,c):
-    #da implementare
+def isCDDS(G, s,t,c):
+    source = 's'
+    sink = 't'
+    eF=nx.DiGraph()
+    for u in s:
+        eF.add_edge(source, u, capacity=G.degree(u))
+        
+    for v in t:
+        eF.add_edge(v, sink, capacity=G.degree(v))
+        
+    for u in s:
+        for v in t:
+            if G.has_edge(u,v):
+                w=G[u][v].get("weight",1)
+                eF.add_edge(u, v, capacity=w)
+    f, fD = nx.maximum_flow(eF, source, sink)
+    for e in [G.edges]:
+        if(e[0] in s and e[1] in t):
+            E_st+=1
+    return f==E_st
 
 def extCDDS(G,r,alpha,beta,c):
     verticles=[G.nodes]
@@ -140,7 +158,7 @@ def extCDDS(G,r,alpha,beta,c):
         cO=cP
         cP=temp
     if isStable(G, alpha, beta, r2):
-        if isCDDS([sS,tS],c):
+        if isCDDS(G, sS,tS,c):
             return(sS,tS,cO,cP,True)
         GS=nx.DiGraph()
         GS.add_weighted_edges_from(sS+tS)
@@ -158,7 +176,7 @@ def CPApprox(G, cL, cR, e, n):
         else:
             sC, tC, cO, cP, f = extCDDS(G,r,alpha,beta,c)
     E_st=0        
-    for e in [G.edges]:
+    for e in list(G.edges):
         if(e[0] in sC and e[1] in tC):
             E_st+=1
 
@@ -180,4 +198,5 @@ def CPApprox(G, cL, cR, e, n):
             denS=den
             D={[s],[t]}
     return D
-        
+
+print(CPApprox(G , 0,0,1,4))
