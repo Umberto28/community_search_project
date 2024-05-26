@@ -7,43 +7,66 @@ PATH = "ProcessedData.txt"
 COL = ["source", "target", "timeStamp"]
 K = [3, 4, 5]
 
-def create_graph(file_path: str, columns: list):
-    # Read the file into a DataFrame
-    df = pd.read_csv(file_path, sep=" ", header=None, names=columns)
-    print(df)
+def convert_to_dict(timestamp_str):
+    key, value = timestamp_str.split('=', 1)
+    return {key: value}
 
-    # Construct the directed graph
-    graph = nx.DiGraph()
+def create_graph(file_path: str, columns: list, analytics_file):
+    ''' 
+    Function to read the dataset txt into a DataFrame and convert it to a networkx directed graph,
+    in order to simple handle data and implement algorithms
+
+    input:
+        file_path: string that represent the path of the dataset text file
+        column: list of dataset columns names
+        analytics_file: txt file where store analytics about graphs and algorithms results
+    '''
+    df = pd.read_csv(file_path, sep=" ", header=None, names=columns)
+    df['timeStamp'] = df['timeStamp'].apply(convert_to_dict)
+    analytics_file.write(f'{df}\n')
+
+    graph = nx.MultiDiGraph()
+    static_graph = nx.DiGraph()
+    # edges = list(zip(df["source"], df["target"], df["timeStamp"]))
+    # graph.add_weighted_edges_from(edges)
     edges = list(zip(df["source"], df["target"], df["timeStamp"]))
-    graph.add_weighted_edges_from(edges)
+    graph.add_edges_from(edges)
+    static_graph.add_edges_from(edges)
     
     # Print metrics
-    calculate_basic_metrics(graph)
+    calculate_basic_metrics(graph, analytics_file)
     
-    return graph
+    return static_graph
 
-def calculate_basic_metrics(graph: nx.DiGraph):
+def calculate_basic_metrics(graph: nx.MultiDiGraph, analytics_file):
+    ''' 
+    Function to calculate some basic graph metrics analyzing the structure
+
+    input:
+        graph: the considered directed graph
+        analytics_file: txt file where store analytics about graphs and algorithms results
+    '''
     #Basic Metrics
     num_nodes = graph.number_of_nodes()
     num_edges = graph.number_of_edges()
     average_degree = sum(dict(graph.degree()).values()) / num_nodes
     degree_distribution = [d for n, d in graph.degree()]
-    print('\n---------------------- BASIC METRICS ----------------------')
-    print("Number of nodes:", num_nodes)
-    print("Number of edges:", num_edges)
-    print("Graph density:", nx.density(graph))
-    print("Average degree:", average_degree)
-    print("Degree distribution:", degree_distribution)
+    analytics_file.write('\n---------------------- BASIC METRICS ----------------------\n')
+    analytics_file.write(f"Number of nodes: {num_nodes}\n")
+    analytics_file.write(f"Number of edges: {num_edges}\n")
+    analytics_file.write(f"Graph density: {nx.density(graph)}")
+    analytics_file.write(f"Average degree: {average_degree}\n")
+    analytics_file.write(f"Degree distribution: {degree_distribution}\n")
 
-    # Clustering Coefficient
-    global_clustering_coefficient = nx.transitivity(graph)
-    local_clustering_coefficients = nx.clustering(graph)
-    average_local_clustering_coefficient = sum(local_clustering_coefficients.values()) / num_nodes
-    print("Global clustering coefficient:", global_clustering_coefficient)
-    print("Average local clustering coefficient:", average_local_clustering_coefficient)
+def compute_support(graph: nx.MultiDiGraph):
+    ''' 
+    Function to compute the triangle support for each graph node
+    (count how many triangle contains a specific edge),
+    useful for the truss decomposition
 
-# Compute the triangles 
-def compute_support(graph: nx.DiGraph):
+    input:
+        graph: the considered directed graph
+    '''
     support = {edge: 0 for edge in graph.edges()}
     for node in graph.nodes():
         neighbors = list(graph.neighbors(node))
@@ -56,7 +79,15 @@ def compute_support(graph: nx.DiGraph):
     return support
 
 
-def decomposition(graph: nx.DiGraph, k: int):
+def decomposition(graph: nx.MultiDiGraph, k: int):
+    ''' 
+    Function to execute one iteration of edges and nodes removing for the truss decomposition,
+    based on the computed triangle support
+
+    input:
+        graph: the considered directed graph
+        k: the current iteration k parameter
+    '''
     support = compute_support(graph)
     
     edges_to_remove = [edge for edge, sup in support.items() if sup < (k-2)]
@@ -68,9 +99,18 @@ def decomposition(graph: nx.DiGraph, k: int):
     graph.remove_nodes_from(nodes_to_remove)
     return graph
 
-def truss_decomposition(graph: nx.DiGraph):
+def truss_decomposition(graph: nx.MultiDiGraph, analytics_file):
+    ''' 
+    Function to execute the truss decomposition of the graph,
+    starting with k=3 and increase it after each iteration
+
+    input:
+        graph: the considered directed graph
+        analytics_file: txt file where store analytics about graphs and algorithms results
+    '''
     k=3
     k_class = []
+    
     while graph.number_of_edges() > 0:
         k_truss = decomposition(graph.copy(), k)
         if k_truss.number_of_edges() > 0:
@@ -78,34 +118,44 @@ def truss_decomposition(graph: nx.DiGraph):
         k += 1
         graph = k_truss
 
-    print('\n---------------------- TRUSS DECOMPOSITION ----------------------')
+    analytics_file.write('\n---------------------- TRUSS DECOMPOSITION ----------------------\n')
     for i in range(len(k_class)):
-        print(f"{i+1}-class: {k_class[i].number_of_nodes()} nodes; {k_class[i].number_of_edges()} edges;")
+        analytics_file.write(f"{i+1}-class: {k_class[i].number_of_nodes()} nodes; {k_class[i].number_of_edges()} edges;\n")
+    
+    return k_class
 
-def k_trusses(graph: nx.DiGraph, k_list: list):
+def k_trusses(graph: nx.MultiDiGraph, k_list: list, analytics_file):
+    ''' 
+    Function to execute different k-trusses on the graph, based on a k parameters list
+
+    input:
+        graph: the considered directed graph
+        k_list: list of k parameters for k-trusses
+        analytics_file: txt file where store analytics about graphs and algorithms results
+    '''
     graph = graph.to_undirected()
     trusses = []
     
-    print('\n---------------------- K-TRUSSES ----------------------')
+    analytics_file.write('\n---------------------- K-TRUSSES ----------------------\n')
     for k in k_list:
         truss = nx.k_truss(graph, k)
         average_degree = sum(dict(truss.degree()).values()) / truss.number_of_nodes()
         periphereal_comunications = analyze_periphereal_comunication(graph, k, truss)
-        print(f"{k}-truss: {truss.number_of_nodes()} nodes; {truss.number_of_edges()} edges; density = {nx.density(truss)}; avg degree = {average_degree}; number of periphereal comunications = {periphereal_comunications};")
+        analytics_file.write(f"{k}-truss: {truss.number_of_nodes()} nodes; {truss.number_of_edges()} edges (number of internal messages); density = {nx.density(truss)}; avg degree = {average_degree}; number of periphereal comunications = {periphereal_comunications};\n")
         trusses.append(truss)
     
     return trusses
     
-''' 
-    function to compute the periphereal comunications, given by all the edges, 
+def analyze_periphereal_comunication(graph, k, truss):
+    ''' 
+    Function to compute the periphereal comunications, given by all the edges,
     that have one node in the periphereal nodes set and the other in the central nodes set or viceversa
 
     input:
-        graph: the graph
-        k: k parameter
-        truss: the k-truss
-'''
-def analyze_periphereal_comunication(graph, k, truss):
+        graph: the considered directed graph
+        k: current k parameter
+        truss: the calculated k-truss
+    '''
     k_minus_1_truss = nx.k_truss(graph, k-1)
     peripherial = set(k_minus_1_truss.nodes()) - set(truss.nodes()) 
     peripherial_edges = []
@@ -115,9 +165,30 @@ def analyze_periphereal_comunication(graph, k, truss):
             peripherial_edges.append(edge)
 
     return len(peripherial_edges)
+
+def visualize_graph(graph: nx.MultiGraph | nx.MultiDiGraph, output_file: str):
+    plt.figure(figsize=(20, 20))
+    # pos = nx.spring_layout(graph, k=0.1, iterations=50)
+    pos = nx.kamada_kawai_layout(graph)
+    nx.draw_networkx(graph, pos, node_size=50, node_color='red', edge_color='gray', font_size=0)
+    # edge_labels = nx.get_edge_attributes(graph, 'timestamp')
+    # nx.draw_networkx_edge_labels(graph, pos, edge_labels=edge_labels, font_size=8, font_color='red', bbox=None)
+    plt.title(output_file.upper())
+    plt.savefig('./graph_plots/' + output_file + '.png', format='PNG')  # Save the figure to a file
+    plt.close()
+
+def main():
+    with open('graph_analytics.txt', 'w') as file:
+        # Graphs creation and algorithms execution
+        G = create_graph(PATH, COL, file)
+        decom_graph = truss_decomposition(G.copy(), file)
+        trusses = k_trusses(G.copy(), K, file)
     
+    # Result graphs visualization
+    visualize_graph(G, 'original_graph')
+    visualize_graph(decom_graph[len(decom_graph) - 1], 'decomposed_graph')
+    for i in range(len(trusses)):
+        visualize_graph(trusses[i], f'{i+3}-truss')
 
-
-G = create_graph(PATH, COL)
-truss_decomposition(G.copy())
-trusses = k_trusses(G.copy(), K)
+if __name__ == '__main__':
+    main()
