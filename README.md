@@ -7,7 +7,7 @@ Additionally, the project implements an efficient algorithm to find the densest 
 The dataset used is the CollegeMsg dataset, which includes 1899 nodes and about 60,000 edges representing user communication data. <br/>
 It's stored into "CollegeMsg.txt" where each row (graph edge) consists of a source user (SRC), a target user (TGT), and a Unix timestamp (UNIXTS). <br/>
 For more information about the dataset: (https://snap.stanford.edu/data/CollegeMsg.html) <br/>
-
+<br/>
 > [!NOTE]
 > This project is developed in python 3.12 and use Pandas, NetworkX and MatPlotLib modules.
 
