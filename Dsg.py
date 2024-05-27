@@ -56,24 +56,27 @@ def appCDDS(G, r, e, c):
     tC=[]
     L=[]
     R=[]
-    E_st = 0
+    
     for u in verticles:
-        if r.at[u, "alpha"]!=None:
-            L.append(u)
+        if r.isnull(r.at[u, "beta"]):
+            L.append(r.at[u, "alpha"])
         else:
-            R.append(u)
+            R.append(r.at[u, "beta"])
+
     L.sort()
     R.sort()
-    r2=r["alpha"]+r["beta"]
-    for i in verticles:
+    r2=r.index.tolist()
+
+    for i in r2:
         if i in L:
             sC.append(i)
         else:
             tC.append(i)
 
         if sC!=None or tC!=None:
-            break
-
+            continue
+        
+        E_st = 0
         for edge in G.edges():
             if(edge[0] in sC and edge[1] in tC):
                 E_st += 1 
@@ -92,6 +95,7 @@ def appCDDS(G, r, e, c):
         temp=cO
         cO=cP
         cP=temp
+
     sigma=r2[0]/denS
     if sigma<=math.sqrt(1+e):
         return (sS, tS, min(cO, c/(1+e)), max(cP, c*(1+e)), True)
@@ -188,7 +192,7 @@ def extCDDS(G, r, alpha, beta, c):
     
         
 def CPApprox(G, cL, cR, e, n):
-    
+
     c=(cL+cR)/2
     f=True
 
