@@ -194,51 +194,55 @@ def extCDDS(G, r, alpha, beta, c):
     return(sS, tS, cO, cP, False)
     
         
-def CPApprox(G, cL, cR, e, n):
+def CP_DDS(G, cl, cr, e, n):
+    c = (cl + cr) / 2
 
-    c=(cL+cR)/2
-    f=True
-
-    while(f):
+    while True:
         r, alpha, beta = FWDDS(G, n, c)
-        if e>0:
-            sC, tC, cO, cP, f = appCDDS(G,r,e,c)
+        if e > 0:
+            sC, tC, cO, cP, f = appCDDS(G, r, e, c)
         else:
-            sC, tC, cO, cP, f = extCDDS(G,r,alpha,beta,c)
+            sC, tC, cO, cP, f = extCDDS(G, r, alpha, beta, c)
 
-    E_st=0        
+        if f:
+            break
+
+    E_st = 0
     for edge in G.edges():
-        if(edge[0] in sC and edge[1] in tC):
-            E_st+=1
+        if edge[0] in sC and edge[1] in tC:
+            E_st += 1
 
-    den=E_st/math.sqrt(len(sC)*len(tC))
-    denS=0
-    if den>denS:
-        denS=den
-        D=[sC+tC]
-    if cL<cO:
-        s, t = CPApprox(G, cL, cO, e)
-        den=E_st/math.sqrt(len(sC)*len(tC))
-        if den>denS:
-            denS=den
-            D=[s+t]
-    if cP<cR:
-        s, t = CPApprox(G, cO, cR, e)
-        den=E_st/math.sqrt(len(sC)*len(tC))
-        if den>denS:
-            denS=den
-            D=[s+t]
+    den = E_st / math.sqrt(len(sC) * len(tC))
+    denS = 0
+    if den > denS:
+        print("\n\nD created with sC + tC\n\n")
+        denS = den
+        D = sC + tC
+
+    if cl < cO:
+        s, t = CP_DDS(G, cl, cO, e, n)
+        den = E_st / math.sqrt(len(s) * len(t))
+        if den > denS:
+            denS = den
+            D = s + t
+
+    if cP < cr:
+        s, t = CP_DDS(G, cO, cr, e, n)
+        den = E_st / math.sqrt(len(s) * len(t))
+        if den > denS:
+            denS = den
+            D = s + t
+
     return D
 
-
-D = CPApprox(G, 2, 2, 1, 4)
-densest_subgraph = nx.DiGraph()
-densest_subgraph.add_edges_from(D)
+D = CP_DDS(G, 1/len(G.nodes), len(G.nodes), 1, 4)
+densest_subgraph = G.subgraph(D)
 print("==============================================")
-print(densest_subgraph.number_of_nodes())
-print(densest_subgraph.number_of_edges())
+print(f"Nodi sottografo con densità maggiore: {densest_subgraph.number_of_nodes()}")
+print(f"Archi sottografo con densità maggiore: {densest_subgraph.number_of_edges()}")
+print("==============================================")
 with open('densest_subgraph.txt', 'w') as file:
-    file.write(densest_subgraph.number_of_nodes())
-    file.write(densest_subgraph.number_of_edges())
+    file.write(str(densest_subgraph.number_of_nodes()))
+    file.write(str(densest_subgraph.number_of_edges()))
     
 
