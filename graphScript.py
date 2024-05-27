@@ -152,9 +152,10 @@ def k_trusses(graph: nx.MultiDiGraph, k_list: list, analytics_file):
     for k in k_list:
         truss = nx.k_truss(graph, k)
         periphereal_comunications = analyze_periphereal_comunication(graph, k, truss)
+        periphereal_comunications_nx = truss.peripheral()
         
         calculate_metrics(truss, 2, k, analytics_file)
-        analytics_file.write(f"Number of Periphereal Comunications: {periphereal_comunications}\n")
+        analytics_file.write(f"Number of Periphereal Comunications: {periphereal_comunications}; Number of peripheral communication (nx): {periphereal_comunications_nx}\n")
         
         trusses.append(truss)
     
