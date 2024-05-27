@@ -58,10 +58,10 @@ def appCDDS(G, r, e, c):
     R=[]
     
     for u in verticles:
-        if r.isnull(r.at[u, "beta"]):
-            L.append(r.at[u, "alpha"])
+        if pd.isnull(r.loc[u, "beta"]):
+            L.append(u)
         else:
-            R.append(r.at[u, "beta"])
+            R.append(u)
 
     L.sort()
     R.sort()
@@ -73,7 +73,7 @@ def appCDDS(G, r, e, c):
         else:
             tC.append(i)
 
-        if sC!=None or tC!=None:
+        if len(sC)==0 or len(tC)==0:
             continue
         
         E_st = 0
@@ -81,7 +81,7 @@ def appCDDS(G, r, e, c):
             if(edge[0] in sC and edge[1] in tC):
                 E_st += 1 
 
-        den=E_st/math.sqrt(sC.size()*tC.size())
+        den=E_st/math.sqrt(len(sC)*len(tC))
 
         if den>denS:
             denS=den
@@ -143,37 +143,40 @@ def extCDDS(G, r, alpha, beta, c):
     tC=[]
     L=[]
     R=[]
-
+    
     for u in verticles:
-        if r.at[u, "alpha"]!=None:
+        if pd.isnull(r.loc[u, "beta"]):
             L.append(u)
         else:
             R.append(u)
 
-    L=sorted(reverse=True, iterable=L)
-    R=sorted(reverse=True, iterable=R)
-    r2=r["alpha"]+r["beta"]
-    r2=sorted(reverse=True, iterable=r)
+    L.sort()
+    R.sort()
+    r2=r.index.tolist()
 
-    for i in range(len(verticles)):
-        if verticles[i] in L:
-            sC.append(verticles[i])
+    for i in r2:
+        if i in L:
+            sC.append(i)
         else:
-            tC.append(verticles[i])
-        if sC!=None or tC!=None:
-            break
-        for e in G.edges():
-            if(e[0] in sC and e[1] in tC):
-                E_st+=1
+            tC.append(i)
 
-        den=E_st/math.sqrt(sC.size()*tC.size())
+        if len(sC)==0 or len(tC)==0:
+            continue
+        
+        E_st = 0
+        for edge in G.edges():
+            if(edge[0] in sC and edge[1] in tC):
+                E_st += 1 
+
+        den=E_st/math.sqrt(len(sC)*len(tC))
+
         if den>denS:
             denS=den
             sS=sC
             tS=tC
 
     cO=len(sS)/len(tS)
-    cP= (c**2) / cO
+    cP=c**2/cO
 
     if cO > cP:
         temp=cO
@@ -208,23 +211,23 @@ def CPApprox(G, cL, cR, e, n):
         if(edge[0] in sC and edge[1] in tC):
             E_st+=1
 
-    den=E_st/math.sqrt(sC.size()*tC.size())
+    den=E_st/math.sqrt(len(sC)*len(tC))
     denS=0
     if den>denS:
         denS=den
-        D={[sC],[tC]}
+        D=[sC+tC]
     if cL<cO:
         s, t = CPApprox(G, cL, cO, e)
-        den=E_st/math.sqrt(sC.size()*tC.size())
+        den=E_st/math.sqrt(len(sC)*len(tC))
         if den>denS:
             denS=den
-            D={[s],[t]}
+            D=[s+t]
     if cP<cR:
         s, t = CPApprox(G, cO, cR, e)
-        den=E_st/math.sqrt(sC.size()*tC.size())
+        den=E_st/math.sqrt(len(sC)*len(tC))
         if den>denS:
             denS=den
-            D={[s],[t]}
+            D=[s+t]
     return D
 
 
