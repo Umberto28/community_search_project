@@ -7,7 +7,7 @@ def convert_unix_to_date_time(unix_timestamp):
 
 # Read the input file
 input_file_path = 'CollegeMsg.txt'
-output_file_path = 'ProcessedData.txt'
+output_file_path = 'ProcessedCollegeMsg.txt'
 
 with open(input_file_path, 'r') as file:
     lines = file.readlines()

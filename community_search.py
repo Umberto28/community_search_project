@@ -3,7 +3,7 @@ import networkx as nx
 import matplotlib.pyplot as plt
 from collections import Counter
 
-PATH = "ProcessedData.txt"
+PATH = "ProcessedCollegeMsg.txt"
 COL = ["source", "target", "timeStamp"]
 K = [3, 4, 5, 6]
 
@@ -26,8 +26,6 @@ def create_graph(file_path: str, columns: list, analytics_file):
 
     graph = nx.MultiDiGraph()
     static_graph = nx.DiGraph()
-    # edges = list(zip(df["source"], df["target"], df["timeStamp"]))
-    # graph.add_weighted_edges_from(edges)
     edges = list(zip(df["source"], df["target"], df["timeStamp"]))
     graph.add_edges_from(edges)
     static_graph.add_edges_from(edges)
