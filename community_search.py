@@ -1,7 +1,7 @@
 import pandas as pd
 import networkx as nx
 import matplotlib.pyplot as plt
-from collections import Counter
+import cProfile
 
 PATH = "ProcessedCollegeMsg.txt"
 COL = ["source", "target", "timeStamp"]
@@ -54,6 +54,11 @@ def calculate_metrics(graph: nx.MultiDiGraph | nx.DiGraph | nx.Graph, metrics: i
     num_edges = graph.number_of_edges()
     average_degree = sum(dict(graph.degree()).values()) / num_nodes
     # degree_distribution = [d for n, d in graph.degree()]
+    degree_centrality = nx.degree_centrality(graph)
+    clustering_coefficient = nx.clustering(graph) if metrics != 0 else 'Not implemented for MultiGraph type!'
+    connected_components = list(nx.connected_components(graph)) if metrics == 2 else 'Not implemented for DirectedGraph type!'
+    # betweenness_centrality = nx.betweenness_centrality(graph)
+    # pagerank = nx.pagerank(graph)
     
     if metrics == 0:
         analytics_file.write('\n---------------------- BASIC METRICS ----------------------\n')
@@ -67,6 +72,11 @@ def calculate_metrics(graph: nx.MultiDiGraph | nx.DiGraph | nx.Graph, metrics: i
     analytics_file.write(f"Graph Density: {nx.density(graph)}\n")
     analytics_file.write(f"Average Degree: {average_degree}\n")
     # analytics_file.write(f"Degree Distribution: {degree_distribution}\n")
+    analytics_file.write(f"Degree Centrality: {degree_centrality}\n")
+    analytics_file.write(f"Clustering Coefficient: {clustering_coefficient}\n")
+    analytics_file.write(f"Connected Components: {connected_components}\n")
+    # print(f"Betweenness Centrality: {betweenness_centrality}")
+    # print(f"PageRank: {pagerank}")
 
 def compute_support(graph: nx.DiGraph):
     ''' 
@@ -144,15 +154,16 @@ def k_trusses(graph: nx.DiGraph, k_list: list, analytics_file):
         analytics_file: txt file where store analytics about graphs and algorithms results
     '''
     graph = graph.to_undirected()
+    periphery = find_periphery(graph)
     trusses = []
     
     analytics_file.write('\n---------------------- K-TRUSSES ----------------------\n')
-    for k in k_list:
-        truss = nx.k_truss(graph, k)
-        peripheral_comunications = analyze_peripheral_comunication(graph, k, truss)
-        peripheral_comunications_nx = analyze_peripheral_comunication_nx(graph, truss)
+    for i in range(len(k_list)):
+        truss = nx.k_truss(graph, k_list[i])
+        peripheral_comunications = analyze_peripheral_comunication(graph, k_list[i], truss, k_minus_1_truss=None if i == 0 else trusses[i-1])
+        peripheral_comunications_nx = analyze_peripheral_comunication_nx(graph, truss, periphery)
         
-        calculate_metrics(truss, 2, k, analytics_file)
+        calculate_metrics(truss, 2, k_list[i], analytics_file)
         analytics_file.write(f"Number of Peripheral Comunications (k-1 truss): {peripheral_comunications}\n")
         analytics_file.write(f"Number of Peripheral Comunications (NX): {peripheral_comunications_nx}\n")
         
@@ -160,7 +171,7 @@ def k_trusses(graph: nx.DiGraph, k_list: list, analytics_file):
     
     return trusses
     
-def analyze_peripheral_comunication(graph: nx.Graph, k: int, truss: nx.Graph):
+def analyze_peripheral_comunication(graph: nx.Graph, k: int, truss: nx.Graph, k_minus_1_truss: nx.Graph | None):
     ''' 
     Function to compute the peripheral comunications, given by all the edges,
     that have one node in the (k-1)-truss nodes set and the other in the k-truss nodes set or viceversa
@@ -170,7 +181,8 @@ def analyze_peripheral_comunication(graph: nx.Graph, k: int, truss: nx.Graph):
         k: current k parameter
         truss: the calculated k-truss
     '''
-    k_minus_1_truss = nx.k_truss(graph, k-1)
+    if k_minus_1_truss == None:
+        k_minus_1_truss = nx.k_truss(graph, k-1)
     peripherial = set(k_minus_1_truss.nodes()) - set(truss.nodes()) 
     communications = 0
     for edge in graph.edges():
@@ -180,17 +192,7 @@ def analyze_peripheral_comunication(graph: nx.Graph, k: int, truss: nx.Graph):
 
     return communications
 
-def analyze_peripheral_comunication_nx(graph: nx.Graph, truss: nx.Graph):
-    ''' 
-    Function to compute the peripheral comunications, given by all the edges
-    that have one node in the peripheral nodes set (considered by nx.periphery function)
-    and the other in the k-truss nodes set or viceversa
-
-    input:
-        graph: the considered directed graph
-        truss: the calculated k-truss
-    '''
-    truss_nodes = set(truss.nodes())
+def find_periphery(graph: nx.Graph):
     peripheral_nodes = []
     
     # If the graph isn't connected the periphery function doesn't work, so it's considered the periphery of each component in the same list of nodes
@@ -201,6 +203,19 @@ def analyze_peripheral_comunication_nx(graph: nx.Graph, truss: nx.Graph):
     else:
         peripheral_nodes = nx.periphery(graph)
     
+    return peripheral_nodes
+
+def analyze_peripheral_comunication_nx(graph: nx.Graph, truss: nx.Graph, peripheral_nodes):
+    ''' 
+    Function to compute the peripheral comunications, given by all the edges
+    that have one node in the peripheral nodes set (considered by nx.periphery function)
+    and the other in the k-truss nodes set or viceversa
+
+    input:
+        graph: the considered directed graph
+        truss: the calculated k-truss
+    '''
+    truss_nodes = set(truss.nodes())    
     peripheral_nodes = set(peripheral_nodes) - truss_nodes
 
     communications = 0
@@ -213,13 +228,13 @@ def analyze_peripheral_comunication_nx(graph: nx.Graph, truss: nx.Graph):
 def visualize_graph(graph: nx.Graph | nx.DiGraph | nx.MultiDiGraph, output_file: str):
     plt.figure(figsize=(50, 50))
     
-    # pos = nx.spring_layout(graph, k=0.1, iterations=50)
-    pos = nx.kamada_kawai_layout(graph)
+    pos = nx.spring_layout(graph, k=0.1, iterations=40)
+    # pos = nx.kamada_kawai_layout(graph)
     
-    nx.draw_networkx(graph, pos, node_size=100, node_color='red', edge_color='gray', font_size=0)
+    nx.draw_networkx(graph, pos, node_size=70, node_color='red', edge_color='gray', font_size=0)
     # edge_labels = nx.get_edge_attributes(graph, 'timestamp')
     # nx.draw_networkx_edge_labels(graph, pos, edge_labels=edge_labels, font_size=8, font_color='red', bbox=None)
-    plt.title(output_file.upper(), fontsize=25)
+    plt.title(output_file.upper(), fontsize=50)
     plt.savefig('./graph_plots/' + output_file + '.png', format='PNG')  # Save the figure to a file
     plt.close()
 
@@ -231,11 +246,15 @@ def main():
         trusses = k_trusses(G.copy(), K, file)
     
     # Result graphs visualization
-    visualize_graph(G, 'original_graph')
-    visualize_graph(original_G, 'static_graph')
-    visualize_graph(decom_graph[len(decom_graph) - 1], 'decomposed_graph')
-    for i in range(len(trusses)):
-        visualize_graph(trusses[i], f'{i+3}-truss')
+    # visualize_graph(original_G, 'original_graph')
+    # visualize_graph(G, 'static_graph')
+    # visualize_graph(decom_graph[len(decom_graph) - 1], 'decomposed_graph')
+    # for i in range(len(trusses)):
+    #     visualize_graph(trusses[i], f'{i+3}-truss')
 
 if __name__ == '__main__':
+    # profiler = cProfile.Profile()
+    # profiler.enable()
     main()
+    # profiler.disable()
+    # profiler.dump_stats('profile_results.prof')
