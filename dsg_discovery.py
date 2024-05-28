@@ -15,34 +15,32 @@ edges = list(zip(df["source"], df["target"], df["timeStamp"]))
 G.add_weighted_edges_from(edges)
 
 def FWDDS(G, n, c):
-    edges= G.edges()
-    vertices= G.nodes()
-    alpha=pd.DataFrame(index= edges, columns=range(n))
-    beta=pd.DataFrame(index= edges, columns=range(n))
-    r=pd.DataFrame(index= vertices, columns=["alpha","beta"])
-    for e in edges:
-        alpha.loc[e, 0]=0.5
-        beta.loc[e, 0]=0.5
-    for e in edges:
-        r.at[e[0], "alpha"]=2*math.sqrt(c)*sum(alpha[0])
-        r.at[e[1], "beta"]=2/math.sqrt(c)*sum(beta[0])
+    edges = list(G.edges())
+    vertices = list(G.nodes())
+    
+    alpha = pd.DataFrame(0.5, index=edges, columns=range(n+1))
+    beta = pd.DataFrame(0.5, index=edges, columns=range(n+1))
+    r = pd.DataFrame(index=vertices, columns=["alpha", "beta"])
+    
+    sqrt_c = math.sqrt(c)
+    inv_sqrt_c = 2 / sqrt_c
     for i in range(n):
         gamma=2/(i+2)
         for e in edges:
-            a = 0
-            b = 0
-
-            if(r.at[e[0], "alpha"] < r.at[e[1], "beta"] or r.at[e[0], "alpha"] == r.at[e[1], "beta"] and c<1):
-                a=1
-            if(r.at[e[0], "alpha"]>r.at[e[1], "beta"] or r.at[e[0], "alpha"]==r.at[e[1], "beta"] and c>=1):
-                b=1
+            r.at[e[0], "alpha"]=2*sqrt_c*(alpha[i].sum())
+            r.at[e[1], "beta"]=inv_sqrt_c*(beta[i].sum())
+            
+        for e in edges:
+            
+            a = int(r.at[e[0], "alpha"] < r.at[e[1], "beta"] or 
+                    (r.at[e[0], "alpha"] == r.at[e[1], "beta"] and c < 1))
+            b = int(r.at[e[0], "alpha"] > r.at[e[1], "beta"] or 
+                    (r.at[e[0], "alpha"] == r.at[e[1], "beta"] and c >= 1))
 
             alpha.at[e, i+1]=(i-gamma)*alpha.at[e, i]+a*gamma
             beta.at[e, i+1]=(i-gamma)*beta.at[e, i]+b*gamma
-
-        for e in edges:
-            r.at[e[0], "alpha"]=2*math.sqrt(c)*(alpha[i].sum())
-            r.at[e[1], "beta"]=2/math.sqrt(c)*(beta[i].sum())
+            
+            
 
     return r, alpha[n], beta[n]
 
@@ -109,8 +107,8 @@ def isStable(G, alpha, beta,r):
     return (r[-1]>r[0] and (alpha.at[e]==0 or beta.at[e]==0 for e in edges))
 
 def isCDDS(G, s, t, c):
-    source = 's'
-    sink = 't'
+    source = -1
+    sink = -2
     eF=nx.DiGraph()
     E_st = 0
 
@@ -123,8 +121,7 @@ def isCDDS(G, s, t, c):
     for u in s:
         for v in t:
             if G.has_edge(u,v):
-                w=G[u][v].get("weight",1)
-                eF.add_edge(u, v, capacity=w)
+                eF.add_edge(u, v, capacity=2)
     f, fD = nx.maximum_flow(eF, source, sink)
 
     for e in G.edges():
@@ -217,26 +214,28 @@ def CP_DDS(G, cl, cr, e, n):
     if den > denS:
         print("\n\nD created with sC + tC\n\n")
         denS = den
-        D = sC + tC
+        D = [sC, tC]
 
     if cl < cO:
         s, t = CP_DDS(G, cl, cO, e, n)
         den = E_st / math.sqrt(len(s) * len(t))
         if den > denS:
+            print("\n\nD created with s + t cl<c0\n\n")
             denS = den
-            D = s + t
+            D = [s,t]
 
     if cP < cr:
         s, t = CP_DDS(G, cO, cr, e, n)
         den = E_st / math.sqrt(len(s) * len(t))
         if den > denS:
+            print("\n\nD created with s + t cp<cr\n\n")
             denS = den
-            D = s + t
+            D = [s, t]
 
     return D
 
-D = CP_DDS(G, 1/len(G.nodes), len(G.nodes), 1, 4)
-densest_subgraph = G.subgraph(D)
+D = CP_DDS(G, 1/len(G.nodes), len(G.nodes), 0, 4)
+densest_subgraph = G.subgraph(D[0]+D[1])
 print("==============================================")
 print(f"Nodi sottografo con densità maggiore: {densest_subgraph.number_of_nodes()}")
 print(f"Archi sottografo con densità maggiore: {densest_subgraph.number_of_edges()}")
@@ -244,5 +243,3 @@ print("==============================================")
 with open('densest_subgraph.txt', 'w') as file:
     file.write(str(densest_subgraph.number_of_nodes()))
     file.write(str(densest_subgraph.number_of_edges()))
-    
-
