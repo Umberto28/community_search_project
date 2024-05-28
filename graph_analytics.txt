@@ -1,6 +1,4 @@
-
 ---------------------- ORIGINAL ----------------------
-
 ---------------------- BASIC METRICS ----------------------
 Number of Nodes: 1899
 Number of Edges: 59835
@@ -8,7 +6,6 @@ Graph Density: 0.016600995144136092
 Average Degree: 63.0173775671406
 
 ---------------------- STATIC ----------------------
-
 ---------------------- BASIC METRICS ----------------------
 Number of Nodes: 1899
 Number of Edges: 20296
@@ -72,25 +69,29 @@ Number of Nodes: 1149
 Number of Edges: 9869
 Graph Density: 0.014963777015614244
 Average Degree: 17.17841601392515
-Number of Periphereal Comunications: 1397
+Number of Peripheral Comunications (k-1 truss): 1397
+Number of Peripheral Comunications (NX): 0
 
 ------ 4-TRUSS ------
 Number of Nodes: 660
 Number of Edges: 6210
 Graph Density: 0.028555662850048284
 Average Degree: 18.818181818181817
-Number of Periphereal Comunications: 3133
+Number of Peripheral Comunications (k-1 truss): 3133
+Number of Peripheral Comunications (NX): 0
 
 ------ 5-TRUSS ------
 Number of Nodes: 313
 Number of Edges: 3135
 Graph Density: 0.06420496436470878
 Average Degree: 20.031948881789138
-Number of Periphereal Comunications: 3704
+Number of Peripheral Comunications (k-1 truss): 3704
+Number of Peripheral Comunications (NX): 0
 
 ------ 6-TRUSS ------
 Number of Nodes: 129
 Number of Edges: 1051
 Graph Density: 0.1273013565891473
 Average Degree: 16.294573643410853
-Number of Periphereal Comunications: 2155
+Number of Peripheral Comunications (k-1 truss): 2155
+Number of Peripheral Comunications (NX): 0

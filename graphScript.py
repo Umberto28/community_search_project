@@ -40,7 +40,7 @@ def create_graph(file_path: str, columns: list, analytics_file):
     
     return graph, static_graph
 
-def calculate_metrics(graph: nx.MultiDiGraph, metrics: int, k: int | None, analytics_file):
+def calculate_metrics(graph: nx.MultiDiGraph | nx.DiGraph | nx.Graph, metrics: int, k: int | None, analytics_file):
     ''' 
     Function to calculate some graph metrics analyzing the structure,
     basing on the programe stage (original graph, decomposed or k-trusses)
@@ -55,7 +55,7 @@ def calculate_metrics(graph: nx.MultiDiGraph, metrics: int, k: int | None, analy
     num_nodes = graph.number_of_nodes()
     num_edges = graph.number_of_edges()
     average_degree = sum(dict(graph.degree()).values()) / num_nodes
-    degree_distribution = [d for n, d in graph.degree()]
+    # degree_distribution = [d for n, d in graph.degree()]
     
     if metrics == 0:
         analytics_file.write('\n---------------------- BASIC METRICS ----------------------\n')
@@ -70,7 +70,7 @@ def calculate_metrics(graph: nx.MultiDiGraph, metrics: int, k: int | None, analy
     analytics_file.write(f"Average Degree: {average_degree}\n")
     # analytics_file.write(f"Degree Distribution: {degree_distribution}\n")
 
-def compute_support(graph: nx.MultiDiGraph):
+def compute_support(graph: nx.DiGraph):
     ''' 
     Function to compute the triangle support for each graph node
     (count how many triangle contains a specific edge),
@@ -91,7 +91,7 @@ def compute_support(graph: nx.MultiDiGraph):
     return support
 
 
-def decomposition(graph: nx.MultiDiGraph, k: int):
+def decomposition(graph: nx.DiGraph, k: int):
     ''' 
     Function to execute one iteration of edges and nodes removing for the truss decomposition,
     based on the computed triangle support
@@ -111,7 +111,7 @@ def decomposition(graph: nx.MultiDiGraph, k: int):
     graph.remove_nodes_from(nodes_to_remove)
     return graph
 
-def truss_decomposition(graph: nx.MultiDiGraph, analytics_file):
+def truss_decomposition(graph: nx.DiGraph, analytics_file):
     ''' 
     Function to execute the truss decomposition of the graph,
     starting with k=3 and increase it after each iteration
@@ -136,7 +136,7 @@ def truss_decomposition(graph: nx.MultiDiGraph, analytics_file):
     
     return k_class
 
-def k_trusses(graph: nx.MultiDiGraph, k_list: list, analytics_file):
+def k_trusses(graph: nx.DiGraph, k_list: list, analytics_file):
     ''' 
     Function to execute different k-trusses on the graph, based on a k parameters list
 
@@ -151,20 +151,21 @@ def k_trusses(graph: nx.MultiDiGraph, k_list: list, analytics_file):
     analytics_file.write('\n---------------------- K-TRUSSES ----------------------\n')
     for k in k_list:
         truss = nx.k_truss(graph, k)
-        periphereal_comunications = analyze_periphereal_comunication(graph, k, truss)
-        periphereal_comunications_nx = truss.peripheral()
+        peripheral_comunications = analyze_peripheral_comunication(graph, k, truss)
+        peripheral_comunications_nx = analyze_peripheral_comunication_nx(graph, truss)
         
         calculate_metrics(truss, 2, k, analytics_file)
-        analytics_file.write(f"Number of Periphereal Comunications: {periphereal_comunications}; Number of peripheral communication (nx): {periphereal_comunications_nx}\n")
+        analytics_file.write(f"Number of Peripheral Comunications (k-1 truss): {peripheral_comunications}\n")
+        analytics_file.write(f"Number of Peripheral Comunications (NX): {peripheral_comunications_nx}\n")
         
         trusses.append(truss)
     
     return trusses
     
-def analyze_periphereal_comunication(graph, k, truss):
+def analyze_peripheral_comunication(graph: nx.Graph, k: int, truss: nx.Graph):
     ''' 
-    Function to compute the periphereal comunications, given by all the edges,
-    that have one node in the periphereal nodes set and the other in the central nodes set or viceversa
+    Function to compute the peripheral comunications, given by all the edges,
+    that have one node in the (k-1)-truss nodes set and the other in the k-truss nodes set or viceversa
 
     input:
         graph: the considered directed graph
@@ -173,18 +174,50 @@ def analyze_periphereal_comunication(graph, k, truss):
     '''
     k_minus_1_truss = nx.k_truss(graph, k-1)
     peripherial = set(k_minus_1_truss.nodes()) - set(truss.nodes()) 
-    peripherial_edges = []
+    communications = 0
     for edge in graph.edges():
         u,v = edge
         if (u in truss.nodes() and v in peripherial) or (v in truss.nodes() and u in peripherial):
-            peripherial_edges.append(edge)
+            communications += 1
 
-    return len(peripherial_edges)
+    return communications
 
-def visualize_graph(graph: nx.MultiGraph | nx.MultiDiGraph, output_file: str):
+def analyze_peripheral_comunication_nx(graph: nx.Graph, truss: nx.Graph):
+    ''' 
+    Function to compute the peripheral comunications, given by all the edges
+    that have one node in the peripheral nodes set (considered by nx.periphery function)
+    and the other in the k-truss nodes set or viceversa
+
+    input:
+        graph: the considered directed graph
+        truss: the calculated k-truss
+    '''
+    truss_nodes = set(truss.nodes())
+    peripheral_nodes = []
+    
+    # If the graph isn't connected the periphery function doesn't work, so it's considered the periphery of each component in the same list of nodes
+    if not nx.is_connected(graph):
+        for component in nx.connected_components(graph):
+            subgraph = graph.subgraph(component).copy()
+            peripheral_nodes.extend(nx.periphery(subgraph))
+    else:
+        peripheral_nodes = nx.periphery(graph)
+    
+    peripheral_nodes = set(peripheral_nodes) - truss_nodes
+
+    communications = 0
+    for u, v in graph.edges():
+        if (u in truss_nodes and v in peripheral_nodes) or (u in peripheral_nodes and v in truss_nodes):
+            communications += 1
+    
+    return communications
+
+def visualize_graph(graph: nx.Graph | nx.DiGraph | nx.MultiDiGraph, output_file: str):
     plt.figure(figsize=(50, 50))
+    
     # pos = nx.spring_layout(graph, k=0.1, iterations=50)
     pos = nx.kamada_kawai_layout(graph)
+    
     nx.draw_networkx(graph, pos, node_size=100, node_color='red', edge_color='gray', font_size=0)
     # edge_labels = nx.get_edge_attributes(graph, 'timestamp')
     # nx.draw_networkx_edge_labels(graph, pos, edge_labels=edge_labels, font_size=8, font_color='red', bbox=None)
