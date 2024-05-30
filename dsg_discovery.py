@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from collections import Counter
 
 # Read the file into a DataFrame
-file_path = "ProcessedData.txt"
+file_path = "./dataset/ProcessedCollegeMsg.txt"
 columns = ["source", "target", "timeStamp"]
 df = pd.read_csv(file_path, sep=" ", header=None, names=columns)
 
@@ -240,6 +240,6 @@ print("==============================================")
 print(f"Nodi sottografo con densità maggiore: {densest_subgraph.number_of_nodes()}")
 print(f"Archi sottografo con densità maggiore: {densest_subgraph.number_of_edges()}")
 print("==============================================")
-with open('densest_subgraph.txt', 'w') as file:
+with open('./output_log/densest_subgraph.txt', 'w') as file:
     file.write(str(densest_subgraph.number_of_nodes()))
     file.write(str(densest_subgraph.number_of_edges()))

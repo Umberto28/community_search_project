@@ -1,11 +1,13 @@
+import itertools as it
+import numpy as np
 import pandas as pd
 import networkx as nx
 import matplotlib.pyplot as plt
 import cProfile
 
-PATH = "ProcessedCollegeMsg.txt"
+PATH = "./dataset/ProcessedCollegeMsg.txt"
 COL = ["source", "target", "timeStamp"]
-K = [3, 4, 5, 6]
+K = [3, 4, 5, 6, 7]
 
 def convert_to_dict(timestamp_str):
     key, value = timestamp_str.split('=', 1)
@@ -32,20 +34,21 @@ def create_graph(file_path: str, columns: list, analytics_file):
     
     # Print metrics
     analytics_file.write('---------------------- ORIGINAL ----------------------')
-    calculate_metrics(graph, 0, None, analytics_file)
+    calculate_metrics(graph, 0, 'create', None, analytics_file)
     analytics_file.write('\n---------------------- STATIC ----------------------')
-    calculate_metrics(static_graph, 0, None, analytics_file)
+    calculate_metrics(static_graph, 1, 'create', None, analytics_file)
     
     return graph, static_graph
 
-def calculate_metrics(graph: nx.MultiDiGraph | nx.DiGraph | nx.Graph, metrics: int, k: int | None, analytics_file):
+def calculate_metrics(graph: nx.MultiDiGraph | nx.DiGraph | nx.Graph, graph_type: int, algorithm: str, k: int | None, analytics_file):
     ''' 
     Function to calculate some graph metrics analyzing the structure,
     basing on the programe stage (original graph, decomposed or k-trusses)
 
     input:
-        graph: the considered directed graph
-        metrics: define what type of result graph is considered
+        graph: the considered graph
+        graph_type: define what type of result graph is considered (nx.MultiDiGraph = 0 | nx.DiGraph = 1 | nx.Graph = 2)
+        algorithm: the algorithm where the considered graph come from
         k: used for decomposition and k-truss
         analytics_file: txt file where store analytics about graphs and algorithms results
     '''
@@ -53,29 +56,24 @@ def calculate_metrics(graph: nx.MultiDiGraph | nx.DiGraph | nx.Graph, metrics: i
     num_nodes = graph.number_of_nodes()
     num_edges = graph.number_of_edges()
     average_degree = sum(dict(graph.degree()).values()) / num_nodes
-    # degree_distribution = [d for n, d in graph.degree()]
-    degree_centrality = nx.degree_centrality(graph)
-    clustering_coefficient = nx.clustering(graph) if metrics != 0 else 'Not implemented for MultiGraph type!'
-    connected_components = list(nx.connected_components(graph)) if metrics == 2 else 'Not implemented for DirectedGraph type!'
-    # betweenness_centrality = nx.betweenness_centrality(graph)
     # pagerank = nx.pagerank(graph)
     
-    if metrics == 0:
+    if algorithm == 'create':
         analytics_file.write('\n---------------------- BASIC METRICS ----------------------\n')
-    elif metrics == 1:
+    elif algorithm == 'decomposition':
         analytics_file.write(f"\n------ {k+1}-CLASS ------\n")
-    elif metrics == 2:
+    elif algorithm == 'k-truss':
         analytics_file.write(f"\n------ {k}-TRUSS ------\n")
+    elif algorithm == 'densest':
+        analytics_file.write('\n------ DENSEST SUBGRAPH ------\n')
+    else:
+        analytics_file.write(f"No Algorithm selected!")
     
     analytics_file.write(f"Number of Nodes: {num_nodes}\n")
     analytics_file.write(f"Number of Edges: {num_edges}\n")
     analytics_file.write(f"Graph Density: {nx.density(graph)}\n")
     analytics_file.write(f"Average Degree: {average_degree}\n")
-    # analytics_file.write(f"Degree Distribution: {degree_distribution}\n")
-    analytics_file.write(f"Degree Centrality: {degree_centrality}\n")
-    analytics_file.write(f"Clustering Coefficient: {clustering_coefficient}\n")
-    analytics_file.write(f"Connected Components: {connected_components}\n")
-    # print(f"Betweenness Centrality: {betweenness_centrality}")
+    analytics_file.write(f"Diameter: {nx.diameter(graph) if nx.is_strongly_connected(graph) else 'not a connected graph!'}\n")
     # print(f"PageRank: {pagerank}")
 
 def compute_support(graph: nx.DiGraph):
@@ -140,7 +138,7 @@ def truss_decomposition(graph: nx.DiGraph, analytics_file):
 
     analytics_file.write('\n---------------------- TRUSS DECOMPOSITION ----------------------\n')
     for i in range(len(k_class)):
-        calculate_metrics(k_class[i], 1, i, analytics_file)
+        calculate_metrics(k_class[i], 1, 'decomposition', i, analytics_file)
     
     return k_class
 
@@ -163,7 +161,7 @@ def k_trusses(graph: nx.DiGraph, k_list: list, analytics_file):
         peripheral_comunications = analyze_peripheral_comunication(graph, k_list[i], truss, k_minus_1_truss=None if i == 0 else trusses[i-1])
         peripheral_comunications_nx = analyze_peripheral_comunication_nx(graph, truss, periphery)
         
-        calculate_metrics(truss, 2, k_list[i], analytics_file)
+        calculate_metrics(truss, 2, k_list[i], 'k-truss', analytics_file)
         analytics_file.write(f"Number of Peripheral Comunications (k-1 truss): {peripheral_comunications}\n")
         analytics_file.write(f"Number of Peripheral Comunications (NX): {peripheral_comunications_nx}\n")
         
@@ -226,31 +224,54 @@ def analyze_peripheral_comunication_nx(graph: nx.Graph, truss: nx.Graph, periphe
     return communications
 
 def visualize_graph(graph: nx.Graph | nx.DiGraph | nx.MultiDiGraph, output_file: str):
-    plt.figure(figsize=(50, 50))
+    fig = plt.figure(figsize=(65, 80))
     
+    # Create a gridspec with 2 rows and 2 columns, width ratio of 2:1 for the columns
+    gs = fig.add_gridspec(2, 2, height_ratios=[2, 1])
+
+    # Main graph plot
+    ax_main = fig.add_subplot(gs[0, :])
     pos = nx.spring_layout(graph, k=0.1, iterations=40)
-    # pos = nx.kamada_kawai_layout(graph)
-    
-    nx.draw_networkx(graph, pos, node_size=70, node_color='red', edge_color='gray', font_size=0)
-    # edge_labels = nx.get_edge_attributes(graph, 'timestamp')
-    # nx.draw_networkx_edge_labels(graph, pos, edge_labels=edge_labels, font_size=8, font_color='red', bbox=None)
-    plt.title(output_file.upper(), fontsize=50)
-    plt.savefig('./graph_plots/' + output_file + '.png', format='PNG')  # Save the figure to a file
+    nx.draw_networkx(graph, pos, node_size=80, node_color='red', edge_color='gray', font_size=0, ax=ax_main)
+    ax_main.set_title(output_file.upper(), fontsize=50)
+
+    # First additional subplot: Node Degree Distribution
+    ax_deg = fig.add_subplot(gs[1, 0])
+    degrees = [graph.degree(n) for n in graph.nodes()]
+    ax_deg.bar(*np.unique(degrees, return_counts=True))
+    ax_deg.set_title('Node Degree Distribution', fontsize=30)
+    ax_deg.set_xlabel('Degree', fontsize=20)
+    ax_deg.set_ylabel('# of Nodes', fontsize=20)
+
+    # Second additional subplot: Edge Betweenness Centrality
+    ax_bet = fig.add_subplot(gs[1, 1])
+    edge_betweenness = nx.edge_betweenness_centrality(graph)
+    betweenness_values = list(edge_betweenness.values())
+    ax_deg.bar(*np.unique(betweenness_values, return_counts=True))
+    ax_bet.set_title('Edge Betweenness Centrality Distribution', fontsize=30)
+    ax_bet.set_xlabel('Betweenness Centrality', fontsize=20)
+    ax_bet.set_ylabel('Frequency', fontsize=20)
+
+    # Adjust layout to avoid overlap
+    plt.tight_layout()
+
+    # Save the figure to a file
+    plt.savefig('./graph_plots/' + output_file + '.png', format='PNG')
     plt.close()
 
 def main():
-    with open('graph_analytics.txt', 'w') as file:
+    with open('./output_log/graph_analytics.txt', 'w') as file:
         # Graphs creation and algorithms execution
         original_G, G  = create_graph(PATH, COL, file)
         decom_graph = truss_decomposition(G.copy(), file)
         trusses = k_trusses(G.copy(), K, file)
     
     # Result graphs visualization
-    # visualize_graph(original_G, 'original_graph')
-    # visualize_graph(G, 'static_graph')
-    # visualize_graph(decom_graph[len(decom_graph) - 1], 'decomposed_graph')
-    # for i in range(len(trusses)):
-    #     visualize_graph(trusses[i], f'{i+3}-truss')
+    visualize_graph(original_G, 'original_graph')
+    visualize_graph(G, 'static_graph')
+    visualize_graph(decom_graph[len(decom_graph) - 1], 'decomposed_graph')
+    for i in range(len(trusses)):
+        visualize_graph(trusses[i], f'{i+3}-truss')
 
 if __name__ == '__main__':
     # profiler = cProfile.Profile()
