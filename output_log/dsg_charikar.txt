@@ -1,7 +1,0 @@
-
------- DENSEST SUBGRAPH ------
-Number of Nodes: 5
-Number of Edges: 92
-Graph Density: 4.6
-Average Degree: 36.8
-Diameter: not a connected graph!

@@ -1,0 +1,122 @@
+---------------------- ORIGINAL ----------------------
+---------------------- BASIC METRICS ----------------------
+Number of Nodes: 1899
+Number of Edges: 59835
+Graph Density: 0.016600995144136092
+Average Degree: 63.0173775671406
+Diameter: not a connected graph!
+
+---------------------- STATIC ----------------------
+---------------------- BASIC METRICS ----------------------
+Number of Nodes: 1899
+Number of Edges: 20296
+Graph Density: 0.005631048674611617
+Average Degree: 21.375460768825697
+Diameter: not a connected graph!
+
+---------------------- TRUSS DECOMPOSITION ----------------------
+
+------ 1-CLASS ------
+Number of Nodes: 1077
+Number of Edges: 13141
+Graph Density: 0.011339670639563983
+Average Degree: 24.40297121634169
+Diameter: not a connected graph!
+
+------ 2-CLASS ------
+Number of Nodes: 932
+Number of Edges: 9825
+Graph Density: 0.011323142313171034
+Average Degree: 21.083690987124463
+Diameter: not a connected graph!
+
+------ 3-CLASS ------
+Number of Nodes: 658
+Number of Edges: 6372
+Graph Density: 0.014739559478702586
+Average Degree: 19.367781155015198
+Diameter: not a connected graph!
+
+------ 4-CLASS ------
+Number of Nodes: 425
+Number of Edges: 3754
+Graph Density: 0.02083240843507214
+Average Degree: 17.665882352941175
+Diameter: not a connected graph!
+
+------ 5-CLASS ------
+Number of Nodes: 241
+Number of Edges: 1971
+Graph Density: 0.034076763485477175
+Average Degree: 16.356846473029044
+Diameter: not a connected graph!
+
+------ 6-CLASS ------
+Number of Nodes: 132
+Number of Edges: 829
+Graph Density: 0.04794124450613
+Average Degree: 12.56060606060606
+Diameter: not a connected graph!
+
+------ 7-CLASS ------
+Number of Nodes: 57
+Number of Edges: 211
+Graph Density: 0.06610275689223058
+Average Degree: 7.4035087719298245
+Diameter: not a connected graph!
+
+------ 8-CLASS ------
+Number of Nodes: 12
+Number of Edges: 11
+Graph Density: 0.08333333333333333
+Average Degree: 1.8333333333333333
+Diameter: not a connected graph!
+
+---------------------- K-TRUSSES ----------------------
+
+------ 3-TRUSS ------
+Number of Nodes: 1149
+Number of Edges: 9869
+Graph Density: 0.014963777015614244
+Average Degree: 17.17841601392515
+Diameter: 6
+Number of Peripheral Comunications (k-1 truss): 1397
+Number of Peripheral Comunications (NX): 0
+
+------ 4-TRUSS ------
+Number of Nodes: 660
+Number of Edges: 6210
+Graph Density: 0.028555662850048284
+Average Degree: 18.818181818181817
+Diameter: not a connected graph!
+Number of Peripheral Comunications (k-1 truss): 3133
+Number of Peripheral Comunications (NX): 0
+
+------ 5-TRUSS ------
+Number of Nodes: 313
+Number of Edges: 3135
+Graph Density: 0.06420496436470878
+Average Degree: 20.031948881789138
+Diameter: 4
+Number of Peripheral Comunications (k-1 truss): 3704
+Number of Peripheral Comunications (NX): 0
+
+------ 6-TRUSS ------
+Number of Nodes: 129
+Number of Edges: 1051
+Graph Density: 0.1273013565891473
+Average Degree: 16.294573643410853
+Diameter: 4
+Number of Peripheral Comunications (k-1 truss): 2155
+Number of Peripheral Comunications (NX): 0
+
+------ 7-TRUSS ------
+Number of Nodes: 16
+Number of Edges: 54
+Graph Density: 0.45
+Average Degree: 6.75
+Diameter: not a connected graph!
+Number of Peripheral Comunications (k-1 truss): 444
+Number of Peripheral Comunications (NX): 0
+
+EXECUTION TIME: 6.88 s

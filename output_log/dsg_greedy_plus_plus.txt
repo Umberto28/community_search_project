@@ -1,0 +1,51 @@
+
+---------------------- 1 ITERATIONS ----------------------
+
+------ DENSEST SUBGRAPH ------
+Number of Nodes: 2
+Number of Edges: 166
+Graph Density: 83.0
+Average Degree: 166.0
+Diameter: 1
+
+------ DENSEST SUBGRAPH ------
+Number of Nodes: 5
+Number of Edges: 13
+Graph Density: 0.65
+Average Degree: 5.2
+Diameter: not a connected graph!
+EXECUTION TIME: 405.73 s
+
+---------------------- 5 ITERATIONS ----------------------
+
+------ DENSEST SUBGRAPH ------
+Number of Nodes: 2
+Number of Edges: 166
+Graph Density: 83.0
+Average Degree: 166.0
+Diameter: 1
+
+------ DENSEST SUBGRAPH ------
+Number of Nodes: 5
+Number of Edges: 13
+Graph Density: 0.65
+Average Degree: 5.2
+Diameter: not a connected graph!
+EXECUTION TIME: 403.11 s
+
+---------------------- 10 ITERATIONS ----------------------
+
+------ DENSEST SUBGRAPH ------
+Number of Nodes: 2
+Number of Edges: 166
+Graph Density: 83.0
+Average Degree: 166.0
+Diameter: 1
+
+------ DENSEST SUBGRAPH ------
+Number of Nodes: 5
+Number of Edges: 13
+Graph Density: 0.65
+Average Degree: 5.2
+Diameter: not a connected graph!
+EXECUTION TIME: 367.43 s
