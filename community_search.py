@@ -19,8 +19,12 @@ def create_graph(file_path: str, columns: list, analytics_file):
 
     input:
         file_path: string that represent the path of the dataset text file
-        column: list of dataset columns names
-        analytics_file: txt file where store analytics about graphs and algorithms results
+        columns: list of dataset columns names
+        analytics_file: log file where store analytics about graphs and algorithms results
+    
+    output:
+        graph: the networkx representation of the input graph (considering multi edges)
+        static_graph: the networkx static representation of the input graph (without multi edges)
     '''
     df = pd.read_csv(file_path, sep=" ", header=None, names=columns)
     df['timeStamp'] = df['timeStamp'].apply(convert_to_dict)
@@ -41,15 +45,14 @@ def create_graph(file_path: str, columns: list, analytics_file):
 
 def calculate_metrics(graph: nx.MultiDiGraph | nx.DiGraph | nx.Graph, algorithm: str, k: int | None, analytics_file):
     ''' 
-    Function to calculate some graph metrics analyzing the structure,
-    basing on the programe stage (original graph, decomposed or k-trusses)
+    Function to calculate some graph's metrics, analyzing the structure
+    based on the current considered algorithm (original graph, decomposed, k-trusses or dsg)
 
     input:
         graph: the considered graph
-        graph_type: define what type of result graph is considered (nx.MultiDiGraph = 0 | nx.DiGraph = 1 | nx.Graph = 2)
         algorithm: the algorithm where the considered graph come from
-        k: used for decomposition and k-truss
-        analytics_file: txt file where store analytics about graphs and algorithms results
+        k: value used for decomposition and k-truss
+        analytics_file: log file where store analytics about graphs and algorithms results
     '''
     #Basic Metrics
     num_nodes = graph.number_of_nodes()
@@ -78,12 +81,14 @@ def calculate_metrics(graph: nx.MultiDiGraph | nx.DiGraph | nx.Graph, algorithm:
 
 def compute_support(graph: nx.DiGraph):
     ''' 
-    Function to compute the triangle support for each graph node
-    (count how many triangle contains a specific edge),
-    useful for the truss decomposition
+    Function to compute the triangle support for each graph's node
+    (count how many triangle contains a specific edge), useful for the truss decomposition
 
     input:
-        graph: the considered directed graph
+        graph: the considered graph
+
+    output:
+        support: dict with all nodes support values
     '''
     support = {edge: 0 for edge in graph.edges()}
     for node in graph.nodes():
@@ -96,15 +101,17 @@ def compute_support(graph: nx.DiGraph):
                     support[(neighbors[i], neighbors[j])] += 1
     return support
 
-
 def decomposition(graph: nx.DiGraph, k: int):
     ''' 
     Function to execute one iteration of edges and nodes removing for the truss decomposition,
     based on the computed triangle support
 
     input:
-        graph: the considered directed graph
+        graph: the considered graph
         k: the current iteration k parameter
+        
+    output:
+        graph: the k-decomposed graph
     '''
     support = compute_support(graph)
     
@@ -115,16 +122,21 @@ def decomposition(graph: nx.DiGraph, k: int):
     
     nodes_to_remove = [node for node in list(graph.nodes) if graph.degree(node) == 0]
     graph.remove_nodes_from(nodes_to_remove)
+    
     return graph
 
 def truss_decomposition(graph: nx.DiGraph, analytics_file):
     ''' 
     Function to execute the truss decomposition of the graph,
-    starting with k=3 and increase it after each iteration
+    starting with k=3, removing edges with low triangle support (based on k value)
+    and increase the k value after each iteration
 
     input:
-        graph: the considered directed graph
-        analytics_file: txt file where store analytics about graphs and algorithms results
+        graph: the considered graph
+        analytics_file: log file where store analytics about graphs and algorithms results
+        
+    output:
+        k_class: list of decomposed graphs, one for each iteration
     '''
     k=3
     k_class = []
@@ -144,12 +156,15 @@ def truss_decomposition(graph: nx.DiGraph, analytics_file):
 
 def k_trusses(graph: nx.DiGraph, k_list: list, analytics_file):
     ''' 
-    Function to execute different k-trusses on the graph, based on a k parameters list
+    Function to execute different k-trusses on the graph, based on a k parameters' list
 
     input:
-        graph: the considered directed graph
+        graph: the considered graph
         k_list: list of k parameters for k-trusses
-        analytics_file: txt file where store analytics about graphs and algorithms results
+        analytics_file: log file where store analytics about graphs and algorithms results
+        
+    output:
+        trusses: list of different k-trusses result graphs
     '''
     graph = graph.to_undirected()
     periphery = find_periphery(graph)
@@ -175,14 +190,20 @@ def analyze_peripheral_comunication(graph: nx.Graph, k: int, truss: nx.Graph, k_
     that have one node in the (k-1)-truss nodes set and the other in the k-truss nodes set or viceversa
 
     input:
-        graph: the considered directed graph
+        graph: the considered graph
         k: current k parameter
         truss: the calculated k-truss
+        k_minus_1_truss: the calculated (k-1)-truss, if available
+        
+    output:
+        communications: the number of messages sent between the k-truss and the periphery (k-1)truss
     '''
     if k_minus_1_truss == None:
         k_minus_1_truss = nx.k_truss(graph, k-1)
+    
     peripherial = set(k_minus_1_truss.nodes()) - set(truss.nodes()) 
     communications = 0
+    
     for edge in graph.edges():
         u,v = edge
         if (u in truss.nodes() and v in peripherial) or (v in truss.nodes() and u in peripherial):
@@ -191,6 +212,15 @@ def analyze_peripheral_comunication(graph: nx.Graph, k: int, truss: nx.Graph, k_
     return communications
 
 def find_periphery(graph: nx.Graph):
+    ''' 
+    Function to find the graph periphery, considering every connected components for not connected graphs
+
+    input:
+        graph: the considered graph
+
+    output:
+        peripheral_nodes: list of the peripheral nodes
+    '''
     peripheral_nodes = []
     
     # If the graph isn't connected the periphery function doesn't work, so it's considered the periphery of each component in the same list of nodes
@@ -210,8 +240,12 @@ def analyze_peripheral_comunication_nx(graph: nx.Graph, truss: nx.Graph, periphe
     and the other in the k-truss nodes set or viceversa
 
     input:
-        graph: the considered directed graph
+        graph: the considered graph
         truss: the calculated k-truss
+        peripheral_nodes: list of the peripheral nodes, obtained by the nx function
+
+    output:
+        communications: the number of messages sent between the k-truss and the periphery (k-1)truss
     '''
     truss_nodes = set(truss.nodes())    
     peripheral_nodes = set(peripheral_nodes) - truss_nodes
@@ -224,6 +258,13 @@ def analyze_peripheral_comunication_nx(graph: nx.Graph, truss: nx.Graph, periphe
     return communications
 
 def visualize_graph(graph: nx.Graph | nx.DiGraph | nx.MultiDiGraph, output_file: str):
+    ''' 
+    Function to create graphs' plots with some information charts and save them into images
+
+    input:
+        graph: the considered graph
+        output_file: the final image path where to save thw plot
+    '''
     fig = plt.figure(figsize=(55, 70))
     
     # Create a gridspec with 2 rows and 2 columns, width ratio of 2:1 for the columns
@@ -251,16 +292,12 @@ def visualize_graph(graph: nx.Graph | nx.DiGraph | nx.MultiDiGraph, output_file:
     ax_bet.set_xlabel('Betweenness Centrality', fontsize=40)
     ax_bet.set_ylabel('Frequency', fontsize=40)
 
-    # Adjust layout to avoid overlap
     plt.tight_layout()
-
-    # Save the figure to a file
     plt.savefig('./graph_plots/' + output_file + '.png', format='PNG')
     plt.close()
 
 def main():
     with open('./output_log/community_search.txt', 'w') as file:
-        # Graphs creation and algorithms execution
         start_time = time.time()
         
         original_G, static_G  = create_graph(PATH, COL, file)
@@ -270,8 +307,7 @@ def main():
         end_time = time.time()
         execution_time = end_time - start_time
         file.write(f'\nEXECUTION TIME: {execution_time:.2f} s')
-    
-    # Result graphs visualization
+
     visualize_graph(original_G, 'original_graph')
     visualize_graph(static_G, 'static_graph')
     visualize_graph(decom_graph[len(decom_graph) - 1], 'truss/decomposed_graph')
@@ -279,8 +315,4 @@ def main():
         visualize_graph(trusses[i], f'truss/{i+3}-truss')
 
 if __name__ == '__main__':
-    # profiler = cProfile.Profile()
-    # profiler.enable()
     main()
-    # profiler.disable()
-    # profiler.dump_stats('profile_results.prof')

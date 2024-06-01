@@ -8,14 +8,18 @@ COL = ["source", "target", "timeStamp"]
 T = [1, 5, 10]
 
 def create_graph(file_path: str, columns: list):
-    ''' 
+    '''
     Function to read the dataset txt into a DataFrame and convert it to a networkx directed graph,
     in order to simple handle data and implement algorithms
 
     input:
         file_path: string that represent the path of the dataset text file
-        column: list of dataset columns names
-        analytics_file: txt file where store analytics about graphs and algorithms results
+        columns: list of dataset columns names
+        analytics_file: log file where store analytics about graphs and algorithms results
+    
+    output:
+        dynamic_graph: the networkx representation of the input graph (considering multi edges)
+        static_graph: the networkx static representation of the input graph (without multi edges)
     '''
     df = pd.read_csv(file_path, sep=" ", header=None, names=columns)
     df['timeStamp'] = df['timeStamp'].apply(convert_to_dict)
@@ -28,16 +32,18 @@ def create_graph(file_path: str, columns: list):
     
     return dynamic_graph, static_graph
 
-def charikar_algorithm(subgraph: nx.DiGraph, load: dict):
-    """
-    Finds the maximum density subgraph using Charikar's greedy algorithm.
+def charikar_algorithm(subgraph: nx.MultiDiGraph | nx.DiGraph, load: dict):
+    '''
+    Function to find the maximum density subgraph for a specific iteration, using Charikar's greedy algorithm.
 
-    Args:
-        G: A NetworkX graph.
+    input:
+        subgraph: the considered subgraph for a specific iteration
+        load: dict of load values for all nodes
 
-    Returns:
-        A subgraph with the highest density.
-    """
+    output:
+        densestsubgraph: the calculated densest subgraph for that iteration
+        load: updated dict of load values for all nodes
+    '''
     densestsubgraph = subgraph.copy()
     max_density = nx.density(subgraph)
 
@@ -59,7 +65,18 @@ def charikar_algorithm(subgraph: nx.DiGraph, load: dict):
 
     return densestsubgraph, load
 
-def greedy_plus_plus(G: nx.Graph, i=10):
+def greedy_plus_plus(G: nx.MultiDiGraph | nx.DiGraph, i: int):
+    '''
+    Function to compute the greedy++ algorithm, in order to find the densest subgraph.
+    It executes Charikar's algorithm for a specified number of iteration
+
+    input:
+        G: the considered graph
+        i: number of iterations
+
+    output:
+        densest_graph: the calculated densest subgraph
+    '''
     densest_graph = G.copy()
     load = {node: 0 for node in G.nodes()}
     max_density = nx.density(densest_graph)
@@ -90,12 +107,12 @@ def main():
             execution_time = end_time - start_time
             
             
-            file.write(f'\n---------------------- {t} ITERATIONS ----------------------\n')
+            file.write(f'\n---------------------- NUMBER OF ITERATIONS: {t} ----------------------\n')
             file.write(f'\n------ ORIGINAL GRAPH ------\n')
             calculate_metrics(densest_flowless_d, 'densest', None, file)
             file.write(f'\n------ STATIC GRAPH ------\n')
             calculate_metrics(densest_flowless_s, 'densest', None, file)
-            file.write(f'EXECUTION TIME: {execution_time:.2f} s\n')
+            file.write(f'\nEXECUTION TIME: {execution_time:.2f} s\n')
             
             visualize_graph(densest_flowless_d, f'dsg/greedy_plus_plus_d_{t}')
             visualize_graph(densest_flowless_s, f'dsg/greedy_plus_plus_s_{t}')
