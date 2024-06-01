@@ -272,7 +272,7 @@ def visualize_graph(graph: nx.Graph | nx.DiGraph | nx.MultiDiGraph, output_file:
     
     ax_main = fig.add_subplot(gs[0, :])
     pos = nx.spring_layout(graph, k=0.1, iterations=40)
-    nx.draw_networkx(graph, pos, node_size=90, node_color='red', ax=ax_main)
+    nx.draw_networkx(graph, pos, node_size=90, node_color='red', edge_color='grey', ax=ax_main)
     ax_main.set_title(output_file.upper(), fontsize=50)
 
     # First additional subplot: Node Degree Distribution
@@ -298,15 +298,15 @@ def visualize_graph(graph: nx.Graph | nx.DiGraph | nx.MultiDiGraph, output_file:
 
 def main():
     with open('./output_log/community_search.txt', 'w') as file:
+        original_G, static_G  = create_graph(PATH, COL, file)
         start_time = time.time()
         
-        original_G, static_G  = create_graph(PATH, COL, file)
         decom_graph = truss_decomposition(static_G.copy(), file)
         trusses = k_trusses(static_G.copy(), K, file)
         
         end_time = time.time()
         execution_time = end_time - start_time
-        file.write(f'\nEXECUTION TIME: {execution_time:.2f} s')
+        file.write(f'\nEXECUTION TIME: {execution_time:.2f} s\n')
 
     visualize_graph(original_G, 'original_graph')
     visualize_graph(static_G, 'static_graph')

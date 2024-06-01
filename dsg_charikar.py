@@ -93,7 +93,7 @@ def greedy_plus_plus(G: nx.MultiDiGraph | nx.DiGraph, i: int):
 
 def main():
     DG, SG  = create_graph(PATH, COL)
-    start_time = time.time()
+    
     with open('./output_log/dsg_greedy_plus_plus.txt', 'w') as file:
         for t in T:
             start_time = time.time()
@@ -105,7 +105,6 @@ def main():
             
             end_time = time.time()
             execution_time = end_time - start_time
-            
             
             file.write(f'\n---------------------- NUMBER OF ITERATIONS: {t} ----------------------\n')
             file.write(f'\n------ ORIGINAL GRAPH ------\n')

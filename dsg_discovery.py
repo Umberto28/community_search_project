@@ -1,18 +1,35 @@
-import pandas as pd
 import math
+import time
+import pandas as pd
 import networkx as nx
 import matplotlib.pyplot as plt
-from collections import Counter
+from community_search import convert_to_dict, calculate_metrics, visualize_graph
 
-# Read the file into a DataFrame
-file_path = "./dataset/ProcessedCollegeMsg.txt"
-columns = ["source", "target", "timeStamp"]
-df = pd.read_csv(file_path, sep=" ", header=None, names=columns)
+PATH = "./dataset/ProcessedCollegeMsg.txt"
+COL = ["source", "target", "timeStamp"]
 
-# Construct the directed graph
-G = nx.DiGraph()
-edges = list(zip(df["source"], df["target"], df["timeStamp"]))
-G.add_weighted_edges_from(edges)
+def create_graph(file_path: str, columns: list):
+    '''
+    Function to read the dataset txt into a DataFrame and convert it to a networkx directed graph,
+    in order to simple handle data and implement algorithms
+
+    input:
+        file_path: string that represent the path of the dataset text file
+        columns: list of dataset columns names
+        analytics_file: log file where store analytics about graphs and algorithms results
+    
+    output:
+        dynamic_graph: the networkx representation of the input graph (considering multi edges)
+        static_graph: the networkx static representation of the input graph (without multi edges)
+    '''
+    df = pd.read_csv(file_path, sep=" ", header=None, names=columns)
+    df['timeStamp'] = df['timeStamp'].apply(convert_to_dict)
+
+    static_graph = nx.DiGraph()
+    edges = list(zip(df["source"], df["target"], df["timeStamp"]))
+    static_graph.add_edges_from(edges)
+    
+    return static_graph
 
 def FWDDS(G, n, c):
     edges = list(G.edges())
@@ -234,12 +251,19 @@ def CP_DDS(G, cl, cr, e, n):
 
     return D
 
-D = CP_DDS(G, 1/len(G.nodes), len(G.nodes), 0, 4)
-densest_subgraph = G.subgraph(D[0]+D[1])
-print("==============================================")
-print(f"Nodi sottografo con densità maggiore: {densest_subgraph.number_of_nodes()}")
-print(f"Archi sottografo con densità maggiore: {densest_subgraph.number_of_edges()}")
-print("==============================================")
-with open('./output_log/densest_subgraph.txt', 'w') as file:
-    file.write(str(densest_subgraph.number_of_nodes()))
-    file.write(str(densest_subgraph.number_of_edges()))
+def main():
+    G  = create_graph(PATH, COL)
+    start_time = time.time()
+    
+    D = CP_DDS(G, 1/G.number_of_nodes(), G.number_of_nodes(), 0, 4)
+    densest_subgraph = G.subgraph(D[0]+D[1])
+
+    end_time = time.time()
+    execution_time = end_time - start_time
+    
+    with open('./output_log/dsg_CP_DDS.txt', 'w') as file:
+        calculate_metrics(densest_subgraph, 'densest', None, file)
+        file.write(f'\nEXECUTION TIME: {execution_time:.2f} s\n')
+
+if __name__ == '__main__':
+    main()
