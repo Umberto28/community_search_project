@@ -1,0 +1,9 @@
+
+------ DENSEST SUBGRAPH ------
+Number of Nodes: 1899
+Number of Edges: 20296
+Graph Density: 0.005631048674611617
+Average Degree: 21.375460768825697
+Diameter: not a connected graph!
+
+EXECUTION TIME: 57.09 s
