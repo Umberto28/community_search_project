@@ -264,6 +264,8 @@ def main():
     with open('./output_log/dsg_CP_DDS.txt', 'w') as file:
         calculate_metrics(densest_subgraph, 'densest', None, file)
         file.write(f'\nEXECUTION TIME: {execution_time:.2f} s\n')
+    
+    visualize_graph(densest_subgraph, 'dsg/dsg_CP_DDS')
 
 if __name__ == '__main__':
     main()
