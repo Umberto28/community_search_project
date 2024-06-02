@@ -8,10 +8,6 @@ PATH = "./dataset/ProcessedCollegeMsg.txt"
 COL = ["source", "target", "timeStamp"]
 K = [3, 4, 5, 6, 7]
 
-def convert_to_dict(timestamp_str):
-    key, value = timestamp_str.split('=', 1)
-    return {key: value}
-
 def create_graph(file_path: str, columns: list, analytics_file):
     ''' 
     Function to read the dataset txt into a DataFrame and convert it to a networkx directed graph,
@@ -26,12 +22,12 @@ def create_graph(file_path: str, columns: list, analytics_file):
         graph: the networkx representation of the input graph (considering multi edges)
         static_graph: the networkx static representation of the input graph (without multi edges)
     '''
-    df = pd.read_csv(file_path, sep=" ", header=None, names=columns)
-    df['timeStamp'] = df['timeStamp'].apply(convert_to_dict)
+    df = pd.read_csv(file_path, sep=",", header=None, names=columns)
+    df['timeStamp'] = pd.to_datetime(df['timeStamp'])
 
     graph = nx.MultiDiGraph()
     static_graph = nx.DiGraph()
-    edges = list(zip(df["source"], df["target"], df["timeStamp"]))
+    edges = list(zip(df["source"], df["target"]))
     graph.add_edges_from(edges)
     static_graph.add_edges_from(edges)
     
@@ -41,7 +37,7 @@ def create_graph(file_path: str, columns: list, analytics_file):
     analytics_file.write('\n---------------------- STATIC ----------------------')
     calculate_metrics(static_graph, 'create', None, analytics_file)
     
-    return graph, static_graph
+    return graph, static_graph, df
 
 def calculate_metrics(graph: nx.MultiDiGraph | nx.DiGraph | nx.Graph, algorithm: str, k: int | None, analytics_file):
     ''' 
@@ -154,7 +150,7 @@ def truss_decomposition(graph: nx.DiGraph, analytics_file):
     
     return k_class
 
-def k_trusses(graph: nx.DiGraph, k_list: list, analytics_file):
+def k_trusses(graph: nx.MultiDiGraph | nx.DiGraph, k_list: list, analytics_file):
     ''' 
     Function to execute different k-trusses on the graph, based on a k parameters' list
 
@@ -168,21 +164,26 @@ def k_trusses(graph: nx.DiGraph, k_list: list, analytics_file):
     '''
     graph = graph.to_undirected()
     periphery = find_periphery(graph)
+    
     trusses = []
+    trusses_peripheral_messages = []
+    trusses_peripheral_messages_nx = []
     
     analytics_file.write('\n---------------------- K-TRUSSES ----------------------\n')
     for i in range(len(k_list)):
         truss = nx.k_truss(graph, k_list[i])
-        peripheral_comunications = analyze_peripheral_comunication(graph, k_list[i], truss, k_minus_1_truss=None if i == 0 else trusses[i-1])
-        peripheral_comunications_nx = analyze_peripheral_comunication_nx(graph, truss, periphery)
+        peripheral_messages, n_peripheral_messages = analyze_peripheral_comunication(graph.copy(), k_list[i], truss, k_minus_1_truss=None if i == 0 else trusses[i-1])
+        peripheral_messages_nx, n_peripheral_messages_nx = analyze_peripheral_comunication_nx(graph.copy(), truss, periphery)
         
         calculate_metrics(truss, 'k-truss', k_list[i], analytics_file)
-        analytics_file.write(f"Number of Peripheral Comunications (k-1 truss): {peripheral_comunications}\n")
-        analytics_file.write(f"Number of Peripheral Comunications (NX): {peripheral_comunications_nx}\n")
+        analytics_file.write(f"Number of Peripheral Comunications (k-1 truss): {n_peripheral_messages}\n")
+        analytics_file.write(f"Number of Peripheral Comunications (NX): {n_peripheral_messages_nx}\n")
         
         trusses.append(truss)
+        trusses_peripheral_messages.append(peripheral_messages)
+        trusses_peripheral_messages_nx.append(peripheral_messages_nx)
     
-    return trusses
+    return trusses,trusses_peripheral_messages, trusses_peripheral_messages_nx
     
 def analyze_peripheral_comunication(graph: nx.Graph, k: int, truss: nx.Graph, k_minus_1_truss: nx.Graph | None):
     ''' 
@@ -196,20 +197,23 @@ def analyze_peripheral_comunication(graph: nx.Graph, k: int, truss: nx.Graph, k_
         k_minus_1_truss: the calculated (k-1)-truss, if available
         
     output:
-        communications: the number of messages sent between the k-truss and the periphery (k-1)truss
+        messages: the messages (edges) between k-truss nodes and peripheral nodes (k-1)
+        n_messages: number of messages
     '''
     if k_minus_1_truss == None:
         k_minus_1_truss = nx.k_truss(graph, k-1)
     
-    peripherial = set(k_minus_1_truss.nodes()) - set(truss.nodes()) 
-    communications = 0
+    peripheral_nodes = set(k_minus_1_truss.nodes()) - set(truss.nodes())
+    n_messages = 0
     
     for edge in graph.edges():
         u,v = edge
-        if (u in truss.nodes() and v in peripherial) or (v in truss.nodes() and u in peripherial):
-            communications += 1
+        if (u in truss.nodes() and v in peripheral_nodes) or (v in truss.nodes() and u in peripheral_nodes):
+            n_messages += 1
+        else:
+            graph.remove_edge(u, v)
 
-    return communications
+    return graph, n_messages
 
 def find_periphery(graph: nx.Graph):
     ''' 
@@ -245,17 +249,22 @@ def analyze_peripheral_comunication_nx(graph: nx.Graph, truss: nx.Graph, periphe
         peripheral_nodes: list of the peripheral nodes, obtained by the nx function
 
     output:
-        communications: the number of messages sent between the k-truss and the periphery (k-1)truss
+        messages: the messages (edges) between k-truss nodes and peripheral nodes (nx.periphery)
+        n_messages: number of messages
     '''
     truss_nodes = set(truss.nodes())    
     peripheral_nodes = set(peripheral_nodes) - truss_nodes
-
-    communications = 0
-    for u, v in graph.edges():
-        if (u in truss_nodes and v in peripheral_nodes) or (u in peripheral_nodes and v in truss_nodes):
-            communications += 1
     
-    return communications
+    n_messages = 0
+    
+    for edge in graph.edges():
+        u,v = edge
+        if (u in truss.nodes() and v in peripheral_nodes) or (v in truss.nodes() and u in peripheral_nodes):
+            n_messages += 1
+        else:
+            graph.remove_edge(u, v)
+
+    return graph, n_messages
 
 def visualize_graph(graph: nx.Graph | nx.DiGraph | nx.MultiDiGraph, output_file: str):
     ''' 
@@ -296,23 +305,91 @@ def visualize_graph(graph: nx.Graph | nx.DiGraph | nx.MultiDiGraph, output_file:
     plt.savefig('./graph_plots/' + output_file + '.png', format='PNG')
     plt.close()
 
+def visualize_temporal(graph: nx.Graph, dataframe: pd.DataFrame, output_file: str):
+    if graph.number_of_edges() > 0:
+        edges_df = nx.to_pandas_edgelist(graph)
+        
+        filtered_df = pd.merge(edges_df, dataframe, on=['source', 'target'], how='inner')
+        filtered_df.set_index('timeStamp', inplace=True)
+        print(filtered_df)
+        
+        day_density = filtered_df.resample('D').size()
+        hour_density = filtered_df.resample('1h').size()
+        week_density = filtered_df.resample('7D').size()
+        
+        time_intervals = filtered_df.index.to_series().diff().dropna().dt.total_seconds()
+        
+        fig, axes = plt.subplots(2, 2, figsize=(18, 12))
+
+        # Plot day density
+        axes[0, 0].plot(day_density.index, day_density.values, label='Daily Density')
+        axes[0, 0].set_title('Daily Message Density')
+        axes[0, 0].set_xlabel('Date')
+        axes[0, 0].set_ylabel('Number of Messages')
+        axes[0, 0].legend()
+        axes[0, 0].set_xlim(left=day_density.index.min(), right=day_density.index.max())
+        axes[0, 0].set_ylim(bottom=0)
+        axes[0, 0].grid(visible=True, linestyle='--')
+
+        # Plot hour density
+        axes[0, 1].plot(hour_density.index, hour_density.values, label='Hourly Density', color='orange')
+        axes[0, 1].set_title('Hourly Message Density')
+        axes[0, 1].set_xlabel('Time')
+        axes[0, 1].set_ylabel('Number of Messages')
+        axes[0, 1].legend()
+        axes[0, 0].set_xlim(left=hour_density.index.min(), right=hour_density.index.max())
+        axes[0, 1].set_ylim(bottom=0)
+        axes[0, 1].grid(visible=True, linestyle='--')
+
+        # Plot week density
+        axes[1, 0].plot(week_density.index, week_density.values, label='Weekly Density', color='green')
+        axes[1, 0].set_title('Weekly Message Density')
+        axes[1, 0].set_xlabel('Date')
+        axes[1, 0].set_ylabel('Number of Messages')
+        axes[1, 0].legend()
+        axes[0, 0].set_xlim(left=week_density.index.min(), right=week_density.index.max())
+        axes[1, 0].set_ylim(bottom=0)
+        axes[1, 0].grid(visible=True, linestyle='--')
+
+        # Plot time intervals
+        axes[1, 1].hist(time_intervals, bins=50, color='purple')
+        axes[1, 1].set_title('Time Intervals Between Messages')
+        axes[1, 1].set_xlabel('Time Interval (seconds)')
+        axes[1, 1].set_ylabel('Frequency')
+        axes[1, 1].grid(visible=True, linestyle='--')
+
+        plt.tight_layout()
+        plt.savefig('./graph_plots/' + output_file + '.png', format='PNG')
+        plt.close()
+    
+    return
+
 def main():
+    '''
+    EXECUTION OF ALGORITHMS AND CALCULATION OF STATISTICS
+    '''
     with open('./output_log/community_search.txt', 'w') as file:
-        original_G, static_G  = create_graph(PATH, COL, file)
+        original_G, static_G, df  = create_graph(PATH, COL, file)
         start_time = time.time()
         
         decom_graph = truss_decomposition(static_G.copy(), file)
-        trusses = k_trusses(static_G.copy(), K, file)
-        
+        trusses, trusses_peripheral_messages, trusses_peripheral_messages_nx = k_trusses(static_G.copy(), K, file)
+
         end_time = time.time()
         execution_time = end_time - start_time
         file.write(f'\nEXECUTION TIME: {execution_time:.2f} s\n')
-
-    visualize_graph(original_G, 'original_graph')
-    visualize_graph(static_G, 'static_graph')
-    visualize_graph(decom_graph[len(decom_graph) - 1], 'truss/decomposed_graph')
-    for i in range(len(trusses)):
-        visualize_graph(trusses[i], f'truss/{i+3}-truss')
+    
+    '''
+    VISUALIZATION OF GRAPH AND TEMPORAL METRICS
+    '''
+    # visualize_graph(original_G, 'original_graph')
+    # visualize_graph(static_G, 'static_graph')
+    # visualize_graph(decom_graph[len(decom_graph) - 1], 'truss/decomposed_graph')
+    # for i in range(len(trusses)):
+    #     visualize_graph(trusses[i], f'truss/{i+3}-truss')
+    #     visualize_temporal(trusses[i], df, f'truss_messages/{i+3}-truss_internal')
+    #     visualize_temporal(trusses_peripheral_messages[i], df, f'truss_messages/{i+3}-truss_peripheral')
+    #     visualize_temporal(trusses_peripheral_messages_nx[i], df, f'truss_messages/{i+3}-truss_peripheral_nx')
 
 if __name__ == '__main__':
     main()

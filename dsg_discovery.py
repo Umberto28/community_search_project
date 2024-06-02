@@ -2,7 +2,6 @@ import math
 import time
 import pandas as pd
 import networkx as nx
-import matplotlib.pyplot as plt
 from community_search import convert_to_dict, calculate_metrics, visualize_graph
 
 PATH = "./dataset/ProcessedCollegeMsg.txt"
