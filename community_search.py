@@ -305,19 +305,33 @@ def visualize_graph(graph: nx.Graph | nx.DiGraph | nx.MultiDiGraph, output_file:
     plt.savefig('./graph_plots/' + output_file + '.png', format='PNG')
     plt.close()
 
+def annot_max(density: pd.Series, ax=None):
+    xmax = density.idxmax()
+    ymax = density.max()
+    text= f"max({xmax}, {ymax})"
+    
+    if not ax:
+        ax=plt.gca()
+    
+    bbox_props = dict(boxstyle="square,pad=0.6", fc="w", edgecolor='red', lw=0.72)
+    kw = dict(xycoords='data',textcoords="axes fraction", bbox=bbox_props, ha="right", va="top")
+    ax.annotate(text, (xmax, ymax), xytext=(0.982, 0.90), color='red', **kw)
+
 def visualize_temporal(graph: nx.Graph, dataframe: pd.DataFrame, output_file: str):
     if graph.number_of_edges() > 0:
         edges_df = nx.to_pandas_edgelist(graph)
         
         filtered_df = pd.merge(edges_df, dataframe, on=['source', 'target'], how='inner')
-        filtered_df.set_index('timeStamp', inplace=True)
+        indexed_df = filtered_df.set_index('timeStamp')
         print(filtered_df)
         
-        day_density = filtered_df.resample('D').size()
-        hour_density = filtered_df.resample('1h').size()
-        week_density = filtered_df.resample('7D').size()
+        day_density = indexed_df.resample('D').size()
+        hour_density = indexed_df.resample('1h').size()
+        week_density = indexed_df.resample('7D').size()
         
-        time_intervals = filtered_df.index.to_series().diff().dropna().dt.total_seconds()
+        sorted_df = filtered_df.sort_values(by=['timeStamp'])
+        time_intervals = sorted_df['timeStamp'].diff().dropna().dt.total_seconds()
+        intervals = time_intervals.value_counts()
         
         fig, axes = plt.subplots(2, 2, figsize=(18, 12))
 
@@ -330,6 +344,7 @@ def visualize_temporal(graph: nx.Graph, dataframe: pd.DataFrame, output_file: st
         axes[0, 0].set_xlim(left=day_density.index.min(), right=day_density.index.max())
         axes[0, 0].set_ylim(bottom=0)
         axes[0, 0].grid(visible=True, linestyle='--')
+        annot_max(day_density, axes[0, 0])
 
         # Plot hour density
         axes[0, 1].plot(hour_density.index, hour_density.values, label='Hourly Density', color='orange')
@@ -337,9 +352,10 @@ def visualize_temporal(graph: nx.Graph, dataframe: pd.DataFrame, output_file: st
         axes[0, 1].set_xlabel('Time')
         axes[0, 1].set_ylabel('Number of Messages')
         axes[0, 1].legend()
-        axes[0, 0].set_xlim(left=hour_density.index.min(), right=hour_density.index.max())
+        axes[0, 1].set_xlim(left=hour_density.index.min(), right=hour_density.index.max())
         axes[0, 1].set_ylim(bottom=0)
         axes[0, 1].grid(visible=True, linestyle='--')
+        annot_max(hour_density, axes[0, 1])
 
         # Plot week density
         axes[1, 0].plot(week_density.index, week_density.values, label='Weekly Density', color='green')
@@ -347,17 +363,22 @@ def visualize_temporal(graph: nx.Graph, dataframe: pd.DataFrame, output_file: st
         axes[1, 0].set_xlabel('Date')
         axes[1, 0].set_ylabel('Number of Messages')
         axes[1, 0].legend()
-        axes[0, 0].set_xlim(left=week_density.index.min(), right=week_density.index.max())
+        axes[1, 0].set_xlim(left=week_density.index.min(), right=week_density.index.max())
         axes[1, 0].set_ylim(bottom=0)
         axes[1, 0].grid(visible=True, linestyle='--')
+        annot_max(week_density, axes[1, 0])
 
         # Plot time intervals
-        axes[1, 1].hist(time_intervals, bins=50, color='purple')
+        axes[1, 1].plot(intervals.index, intervals.values, label='Time Interval', color='purple', lw=1)
         axes[1, 1].set_title('Time Intervals Between Messages')
-        axes[1, 1].set_xlabel('Time Interval (seconds)')
-        axes[1, 1].set_ylabel('Frequency')
+        axes[1, 1].set_xlabel('Time intervals (in seconds)')
+        axes[1, 1].set_ylabel('Number of Consecutive Messages')
+        axes[1, 1].legend()
+        axes[1, 1].set_xlim(left=-1000, right=30000)
+        axes[1, 1].set_ylim(bottom=0)
         axes[1, 1].grid(visible=True, linestyle='--')
-
+        annot_max(intervals, axes[1, 1])
+        
         plt.tight_layout()
         plt.savefig('./graph_plots/' + output_file + '.png', format='PNG')
         plt.close()
