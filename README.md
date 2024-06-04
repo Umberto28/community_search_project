@@ -12,7 +12,6 @@ For more information about the dataset: (https://snap.stanford.edu/data/CollegeM
 <br/>
 > [!NOTE]
 > This project is developed in python 3.12 and use Pandas, NetworkX and MatPlotLib modules.
-<br/>
 
 ### Project Structure
 
