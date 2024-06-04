@@ -22,4 +22,4 @@ For more information about the dataset: (https://snap.stanford.edu/data/CollegeM
 
 - **graphScript.py**: This script performs truss decomposition and k-trusses of the input graph (the selected k values are [3, 4, 5, 6, 7]), then saves statistics and plot images for the resulting graphs.
 - **dsg_greedy_plus_plus.py**: This script performs the greedy++ algorithm for dsg discovery and saves statistics and plot images for the resulting graphs.
-- **dsg_discovery.py**: In addiction, we tried to add a second dsg discovery method in this script. The algorithm considered here uses a convex-programming approach, for more information: [A Convex-Programming Approach for Efficient Directed Densest Subgraph Discovery](https://dl.acm.org/doi/10.1145/3514221.3517837).
+- **dsg_discovery.py**: In addiction, we tried to implement a second dsg discovery method in this script. The algorithm considered here uses a convex-programming approach, for more information: [A Convex-Programming Approach for Efficient Directed Densest Subgraph Discovery](https://dl.acm.org/doi/10.1145/3514221.3517837).
