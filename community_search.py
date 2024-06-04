@@ -272,7 +272,7 @@ def visualize_graph(graph: nx.Graph | nx.DiGraph | nx.MultiDiGraph, output_file:
 
     input:
         graph: the considered graph
-        output_file: the final image path where to save thw plot
+        output_file: the final image path where to save the plots
     '''
     fig = plt.figure(figsize=(55, 70))
     
@@ -318,6 +318,14 @@ def annot_max(density: pd.Series, ax=None):
     ax.annotate(text, (xmax, ymax), xytext=(0.982, 0.90), color='red', **kw)
 
 def visualize_temporal(graph: nx.Graph, dataframe: pd.DataFrame, output_file: str):
+    ''' 
+    Function to calculate and visualize some graphs' temporal metrics about messages (internal and with the periphery) 
+
+    input:
+        graph: the considered graph
+        dataframe: the pandas DataFrame with all the edges from the original graph
+        output_file: the final image path where to save the plots
+    '''
     if graph.number_of_edges() > 0:
         edges_df = nx.to_pandas_edgelist(graph)
         
@@ -369,12 +377,12 @@ def visualize_temporal(graph: nx.Graph, dataframe: pd.DataFrame, output_file: st
         annot_max(week_density, axes[1, 0])
 
         # Plot time intervals
-        axes[1, 1].plot(intervals.index, intervals.values, label='Time Interval', color='purple', lw=1)
+        axes[1, 1].bar(intervals.index.to_list(), intervals.values.tolist(), label='Time Interval', color='purple', width=50.0)
         axes[1, 1].set_title('Time Intervals Between Messages')
         axes[1, 1].set_xlabel('Time intervals (in seconds)')
         axes[1, 1].set_ylabel('Number of Consecutive Messages')
         axes[1, 1].legend()
-        axes[1, 1].set_xlim(left=-1000, right=30000)
+        axes[1, 1].set_xlim(left=-100, right=7500)
         axes[1, 1].set_ylim(bottom=0)
         axes[1, 1].grid(visible=True, linestyle='--')
         annot_max(intervals, axes[1, 1])
@@ -382,8 +390,6 @@ def visualize_temporal(graph: nx.Graph, dataframe: pd.DataFrame, output_file: st
         plt.tight_layout()
         plt.savefig('./graph_plots/' + output_file + '.png', format='PNG')
         plt.close()
-    
-    return
 
 def main():
     '''
